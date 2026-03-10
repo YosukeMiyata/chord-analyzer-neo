@@ -8,7 +8,7 @@ chord-analysis-toolは、音声ファイルからコード進行を自動推定�
 
 ## タスク
 
-- [ ] 1. プロジェクト構造とコアインターフェースのセットアップ
+- [x] 1. プロジェクト構造とコアインターフェースのセットアップ
   - プロジェクトディレクトリ構造を作成（src/、tests/、models/、cache/、corrections/）
   - Python依存関係を定義（requirements.txt: librosa==0.11.0, numpy==1.24.3, scipy==1.11.4, openai-whisper, demucs, tensorflow-cpu==2.13.0, onnxruntime==1.24.1, scikit-learn==1.8.0）
   - Tauriプロジェクトを初期化（tauri init）
@@ -17,8 +17,8 @@ chord-analysis-toolは、音声ファイルからコード進行を自動推定�
   - テストフレームワークをセットアップ（pytest）
   - _要件: 1.1, 2.3, 2.4, 2.5, 5.1, 5.2, 5.3, 9.1, 11.5, 13.1_
 
-- [ ] 2. AudioProcessingEngineの基本実装
-  - [ ] 2.1 音声ファイル読み込み機能を実装
+- [x] 2. AudioProcessingEngineの基本実装
+  - [x] 2.1 音声ファイル読み込み機能を実装
     - load_audio_file()メソッドを実装（librosaを使用）
     - 音声ファイルの検証ロジックを実装（ファイル存在確認、フォーマット検証）
     - 基本情報取得（サンプルレート、長さ、チャンネル数）を実装
