@@ -28,3 +28,5 @@ hypothesis
 # Utilities
 python-dotenv
 pydantic
+tomli
+tomli-w
