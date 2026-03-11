@@ -7,7 +7,7 @@ from typing import Optional
 from datetime import datetime
 import logging
 
-from models import AudioAnalysisResult, ChordSegment, LyricSegment, ChordQuality
+from src.models import AudioAnalysisResult, ChordSegment, LyricSegment, ChordQuality
 
 logger = logging.getLogger(__name__)
 

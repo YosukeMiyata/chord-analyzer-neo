@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Optional, Tuple
 import logging
 
-from models import AudioAnalysisResult
-from cache_manager import CacheManager
+from src.models import AudioAnalysisResult
+from src.cache_manager import CacheManager
 
 logger = logging.getLogger(__name__)
 
@@ -183,8 +183,8 @@ class AudioProcessingEngine:
             audio_mono = librosa.to_mono(self.audio_data)
 
         # Import analysis modules
-        from chord_estimation import ChordEstimationModule
-        from lyrics_transcription import LyricsTranscriptionModule
+        from src.chord_estimation import ChordEstimationModule
+        from src.lyrics_transcription import LyricsTranscriptionModule
 
         # Step 1: Chord estimation
         logger.info("Step 1/5: Estimating chords")

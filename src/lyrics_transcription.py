@@ -5,7 +5,7 @@ import numpy as np
 from typing import List, Tuple, Optional
 import logging
 
-from models import LyricSegment, ChordSegment
+from src.models import LyricSegment, ChordSegment
 
 logger = logging.getLogger(__name__)
 

@@ -152,6 +152,7 @@ class TestNewAnalysisWhenNoCacheExists:
         
         # Mock cache manager: no cache exists
         audio_engine.cache_manager.has_cache = Mock(return_value=False)
+        audio_engine.cache_manager.load_cache = Mock()  # Add mock for load_cache
         
         # Attempt analysis (will fail at _perform_new_analysis)
         try:

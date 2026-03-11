@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
-from models import ChordCorrection, ChordSegment
+from src.models import ChordCorrection, ChordSegment
 
 
 class ChordCorrectionModule:

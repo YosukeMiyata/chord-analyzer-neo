@@ -5,7 +5,7 @@ import tomli
 import tomli_w
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-from models import ModelConfig
+from src.models import ModelConfig
 
 
 class ModelConfigurationModule:

@@ -28,8 +28,9 @@ def sample_audio():
 
 def test_chord_estimator_initialization(chord_estimator):
     """Test ChordEstimationModule initialization"""
-    assert chord_estimator.model_path is None
-    assert chord_estimator.model is None
+    # After ChordAI integration, model_path and model are set
+    assert chord_estimator.model_path is not None
+    assert chord_estimator.model is not None
     assert chord_estimator.hop_length == 512
     assert chord_estimator.n_fft == 2048
 
