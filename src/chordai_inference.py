@@ -95,12 +95,16 @@ class ChordAIInferenceEngine:
             cqt_mag = np.abs(cqt)  # Magnitude
             cqt_phase = np.angle(cqt)  # Phase
             
-            # Transpose to (n_frames, 252) and normalize
+            # Transpose to (n_frames, 252)
             cqt_mag = cqt_mag.T
             cqt_phase = cqt_phase.T
             
-            # Normalize magnitude to [0, 1] range
-            cqt_mag = cqt_mag / (np.max(cqt_mag) + 1e-8)
+            # Apply log scaling to magnitude (common in audio processing)
+            cqt_mag = librosa.amplitude_to_db(cqt_mag, ref=np.max)
+            
+            # Normalize magnitude to [0, 1] range per frame
+            # This preserves temporal variation better than global normalization
+            cqt_mag = (cqt_mag - cqt_mag.min()) / (cqt_mag.max() - cqt_mag.min() + 1e-8)
             
             # Normalize phase to [-1, 1] range
             cqt_phase = cqt_phase / np.pi
@@ -119,16 +123,18 @@ class ChordAIInferenceEngine:
     
     def _run_inference_batch(
         self,
-        chroma: np.ndarray,
+        cqt_mag: np.ndarray,
+        cqt_phase: np.ndarray,
         frame_duration: float
     ) -> List[ChordPrediction]:
-        """Run inference on a batch of chroma frames
+        """Run inference on CQT features
         
-        Converts chroma features to CQT format expected by the model,
+        Converts CQT magnitude and phase to the format expected by the model,
         runs inference, and parses the output into ChordPrediction objects.
         
         Args:
-            chroma: Chroma features (12, n_frames)
+            cqt_mag: CQT magnitude features (n_frames, 252)
+            cqt_phase: CQT phase features (n_frames, 252)
             frame_duration: Duration per frame in seconds
             
         Returns:
@@ -149,17 +155,11 @@ class ChordAIInferenceEngine:
         with open(index_path, 'r') as f:
             chord_index = json.load(f)
         
-        # Convert chroma to CQT-like features
-        # The model expects (batch, time, 252, 2) where:
-        # - 252 is the number of frequency bins (CQT with 36 bins/octave * 7 octaves)
-        # - 2 channels (magnitude and phase, or real/imaginary)
-        # 
-        # For now, we'll create a simplified mapping from chroma (12 bins) to CQT (252 bins)
-        # by repeating and interpolating the chroma features
-        cqt_features = self._chroma_to_cqt_features(chroma)
+        # Stack magnitude and phase as 2 channels: (n_frames, 252, 2)
+        cqt_features = np.stack([cqt_mag, cqt_phase], axis=-1)
+        n_frames = cqt_features.shape[0]
         
         # Pad or chunk the time dimension to multiples of 256 (model requirement)
-        n_frames = cqt_features.shape[0]
         chunk_size = 256
         
         # Pad to nearest multiple of chunk_size
@@ -216,29 +216,6 @@ class ChordAIInferenceEngine:
             predictions.append(prediction)
         
         return predictions
-    
-    def _chroma_to_cqt_features(self, chroma: np.ndarray) -> np.ndarray:
-        """Convert chroma features to CQT-like features expected by the model
-        
-        Args:
-            chroma: Chroma features with shape (12, n_frames)
-            
-        Returns:
-            CQT-like features with shape (n_frames, 252, 2)
-        """
-        # Transpose to (n_frames, 12)
-        chroma_t = chroma.T
-        n_frames = chroma_t.shape[0]
-        
-        # Expand chroma (12 bins) to CQT (252 bins) by repeating
-        # 252 / 12 = 21, so repeat each chroma bin 21 times
-        cqt_expanded = np.repeat(chroma_t, 21, axis=1)  # (n_frames, 252)
-        
-        # Create 2-channel representation (magnitude and phase)
-        # For simplicity, use the chroma values as magnitude and zeros as phase
-        cqt_features = np.stack([cqt_expanded, np.zeros_like(cqt_expanded)], axis=-1)
-        
-        return cqt_features  # (n_frames, 252, 2)
     
     def _parse_chord_label(self, chord_label: str) -> tuple:
         """Parse chord label into root, quality, and bass_note

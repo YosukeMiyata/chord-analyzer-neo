@@ -74,22 +74,25 @@ function App() {
     }
   }
 
-  const analyzeAudio = async (filepath: string) => {
+  const analyzeAudio = async (filepath: string, forceNoCache: boolean = false) => {
     setIsAnalyzing(true)
     setError(null)
     try {
       const result = await invoke<AnalysisResult>('analyze_audio', {
         filepath,
         modelId: selectedModel,
-        useCache: true
+        useCache: !forceNoCache
       })
       
       // Merge consecutive identical chords
       const mergedChords = mergeConsecutiveChords(result.chord_progression)
       
+      // Automatically determine optimal grouping based on chord change frequency
+      const groupedChords = smartGroupChords(mergedChords, result.tempo)
+      
       setAnalysisResult({
         ...result,
-        chord_progression: mergedChords
+        chord_progression: groupedChords
       })
     } catch (err) {
       console.error('Analysis failed:', err)
@@ -132,6 +135,94 @@ function App() {
     merged.push(current)
     
     return merged
+  }
+
+  // Helper function to group chords by bars (4 bars per group)
+  // Takes the most common or highest confidence chord in each group
+  const groupChordsByBars = (chords: ChordSegment[], tempo: number, barsPerGroup: number = 4): ChordSegment[] => {
+    if (chords.length === 0) return chords
+    
+    const BEATS_PER_BAR = 4 // Assuming 4/4 time signature
+    const secondsPerBeat = 60 / tempo
+    const secondsPerBar = secondsPerBeat * BEATS_PER_BAR
+    const secondsPerGroup = secondsPerBar * barsPerGroup
+    
+    const grouped: ChordSegment[] = []
+    let currentGroupStart = 0
+    
+    while (currentGroupStart < chords[chords.length - 1].end_time) {
+      const groupEnd = currentGroupStart + secondsPerGroup
+      
+      // Find all chords that overlap with this group
+      const chordsInGroup = chords.filter(chord => 
+        chord.start_time < groupEnd && chord.end_time > currentGroupStart
+      )
+      
+      if (chordsInGroup.length > 0) {
+        // Calculate weighted score for each chord (duration * confidence - penalty)
+        let bestChord = chordsInGroup[0]
+        let bestScore = -Infinity
+        
+        chordsInGroup.forEach(chord => {
+          const overlapStart = Math.max(chord.start_time, currentGroupStart)
+          const overlapEnd = Math.min(chord.end_time, groupEnd)
+          const duration = overlapEnd - overlapStart
+          
+          // Apply penalty for maj7 (prefer simpler major chords)
+          let penalty = 0
+          if (chord.quality === 'maj7') {
+            penalty = 0.10
+          }
+          
+          // Score = duration * confidence - penalty
+          const score = duration * chord.confidence - penalty
+          
+          if (score > bestScore) {
+            bestScore = score
+            bestChord = chord
+          }
+        })
+        
+        // Use the best scored chord as representative
+        const representativeChord = { ...bestChord }
+        representativeChord.start_time = currentGroupStart
+        representativeChord.end_time = Math.min(groupEnd, chords[chords.length - 1].end_time)
+        
+        grouped.push(representativeChord)
+      }
+      
+      currentGroupStart = groupEnd
+    }
+    
+    return grouped
+  }
+
+  // Helper function to automatically determine optimal grouping based on chord change frequency
+  const smartGroupChords = (chords: ChordSegment[], tempo: number): ChordSegment[] => {
+    if (chords.length === 0) return chords
+    
+    const BEATS_PER_BAR = 4
+    const secondsPerBeat = 60 / tempo
+    const secondsPerBar = secondsPerBeat * BEATS_PER_BAR
+    
+    // Analyze chord change frequency
+    // Calculate average chord duration in bars
+    const avgChordDuration = chords.reduce((sum, chord) => 
+      sum + (chord.end_time - chord.start_time), 0) / chords.length
+    const avgBarsPerChord = avgChordDuration / secondsPerBar
+    
+    // Determine grouping strategy: 4-bar or 2-bar grouping
+    let barsPerGroup: number
+    
+    if (avgBarsPerChord >= 1.5) {
+      // Slow chord changes: use 4-bar grouping
+      barsPerGroup = 4
+    } else {
+      // Fast chord changes: use 2-bar grouping
+      barsPerGroup = 2
+    }
+    
+    return groupChordsByBars(chords, tempo, barsPerGroup)
   }
 
   const handlePlayPause = async () => {
@@ -235,6 +326,12 @@ function App() {
           <>
             <div className="file-info">
               <span className="file-name">{audioFile.split('/').pop()}</span>
+              <button onClick={async () => {
+                console.log('Re-analyze without cache')
+                await analyzeAudio(audioFile, true)
+              }} className="btn-secondary" disabled={isAnalyzing}>
+                キャッシュなしで再解析
+              </button>
               <button onClick={async () => {
                 console.log('Change file button clicked')
                 try {

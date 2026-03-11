@@ -99,7 +99,7 @@ async fn analyze_audio(
 import sys
 import json
 sys.path.insert(0, '{}')
-from audio_engine import AudioProcessingEngine
+from src.audio_engine import AudioProcessingEngine
 from pathlib import Path
 
 engine = AudioProcessingEngine()
@@ -133,7 +133,7 @@ output = {{
 }}
 print(json.dumps(output, ensure_ascii=False))
 "#,
-            src_path.display(), filepath, use_cache_str
+            _project_root.display(), filepath, use_cache_str
         ))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -160,7 +160,7 @@ async fn list_models() -> Result<Vec<ModelConfig>, String> {
 import sys
 import json
 sys.path.insert(0, '{}')
-from model_configuration import ModelConfigurationModule
+from src.model_configuration import ModelConfigurationModule
 from pathlib import Path
 
 module = ModelConfigurationModule(Path('./models'))
@@ -178,7 +178,7 @@ output = [
     }} for m in models
 ]
 print(json.dumps(output))
-"#, src_path.display()))
+"#, _project_root.display()))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
@@ -215,8 +215,8 @@ async fn save_chord_correction(
 import sys
 import json
 sys.path.insert(0, '{}')
-from chord_correction import ChordCorrectionModule
-from models import ChordSegment, ChordQuality
+from src.chord_correction import ChordCorrectionModule
+from src.models import ChordSegment, ChordQuality
 from pathlib import Path
 
 module = ChordCorrectionModule(Path('./corrections'))
@@ -249,7 +249,7 @@ corrected = ChordSegment(
 module.save_correction(Path('{}'), {}, original, corrected)
 print('success')
 "#,
-            src_path.display(),
+            _project_root.display(),
             original_json.replace('\'', "\\'"),
             corrected_json.replace('\'', "\\'"),
             filepath,

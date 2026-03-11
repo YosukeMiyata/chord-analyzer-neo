@@ -17,11 +17,12 @@ from src.models import ChordSegment, ChordQuality
 def mock_chord_estimator():
     """Create a mocked ChordEstimationModule that bypasses initialization"""
     with patch.object(ChordEstimationModule, '_verify_dependencies'):
-        with patch.object(ChordEstimationModule, '__init__', lambda x, model_path=None: None):
+        with patch.object(ChordEstimationModule, '__init__', lambda x, model_path=None, use_chordai=False: None):
             estimator = ChordEstimationModule()
             estimator.hop_length = 512
             estimator.n_fft = 2048
             estimator.frame_duration = 0.5
+            estimator.use_chordai = True  # Set use_chordai for these tests
             return estimator
 
 

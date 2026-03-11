@@ -22,7 +22,7 @@ class TestChordAIInitialization:
             )
             
             with pytest.raises(ImportError) as exc_info:
-                ChordEstimationModule()
+                ChordEstimationModule(use_chordai=True)
             
             assert "tensorflow>=2.0" in str(exc_info.value)
             assert "pip install" in str(exc_info.value)
@@ -38,7 +38,7 @@ class TestChordAIInitialization:
                     mock_loader.validate_model.return_value = True
                     mock_loader_class.return_value = mock_loader
                     
-                    estimator = ChordEstimationModule()
+                    estimator = ChordEstimationModule(use_chordai=True)
                     
                     assert estimator.model_path == Path("models/chordai")
     
@@ -55,7 +55,7 @@ class TestChordAIInitialization:
                     mock_loader.validate_model.return_value = True
                     mock_loader_class.return_value = mock_loader
                     
-                    estimator = ChordEstimationModule(model_path=custom_path)
+                    estimator = ChordEstimationModule(model_path=custom_path, use_chordai=True)
                     
                     assert estimator.model_path == custom_path
                     mock_loader_class.assert_called_once_with(custom_path)
@@ -73,7 +73,7 @@ class TestChordAIInitialization:
                     mock_loader.validate_model.return_value = True
                     mock_loader_class.return_value = mock_loader
                     
-                    estimator = ChordEstimationModule(model_path=model_path)
+                    estimator = ChordEstimationModule(model_path=model_path, use_chordai=True)
                     
                     # Verify loader was created with correct path
                     mock_loader_class.assert_called_once_with(model_path)
@@ -91,7 +91,7 @@ class TestChordAIInitialization:
                     mock_loader.validate_model.return_value = True
                     mock_loader_class.return_value = mock_loader
                     
-                    estimator = ChordEstimationModule()
+                    estimator = ChordEstimationModule(use_chordai=True)
                     
                     # Verify model was loaded
                     mock_loader.load_model.assert_called_once()
@@ -109,7 +109,7 @@ class TestChordAIInitialization:
                     mock_loader.validate_model.return_value = True
                     mock_loader_class.return_value = mock_loader
                     
-                    estimator = ChordEstimationModule()
+                    estimator = ChordEstimationModule(use_chordai=True)
                     
                     # Verify validation was called
                     mock_loader.validate_model.assert_called_once_with(mock_model)
@@ -126,7 +126,7 @@ class TestChordAIInitialization:
                 mock_loader_class.return_value = mock_loader
                 
                 with pytest.raises(ValueError) as exc_info:
-                    ChordEstimationModule()
+                    ChordEstimationModule(use_chordai=True)
                 
                 assert "Invalid model architecture" in str(exc_info.value)
     
@@ -145,7 +145,7 @@ class TestChordAIInitialization:
                     mock_engine = Mock()
                     mock_engine_class.return_value = mock_engine
                     
-                    estimator = ChordEstimationModule()
+                    estimator = ChordEstimationModule(use_chordai=True)
                     
                     # Verify inference engine was created with model
                     mock_engine_class.assert_called_once_with(mock_model)
@@ -163,7 +163,7 @@ class TestChordAIInitialization:
                 mock_loader_class.return_value = mock_loader
                 
                 with pytest.raises(FileNotFoundError) as exc_info:
-                    ChordEstimationModule()
+                    ChordEstimationModule(use_chordai=True)
                 
                 assert "model weights not found" in str(exc_info.value).lower()
     
@@ -179,7 +179,7 @@ class TestChordAIInitialization:
                 mock_loader_class.return_value = mock_loader
                 
                 with pytest.raises(RuntimeError) as exc_info:
-                    ChordEstimationModule()
+                    ChordEstimationModule(use_chordai=True)
                 
                 assert "Failed to load ChordAI model" in str(exc_info.value)
     
@@ -194,7 +194,7 @@ class TestChordAIInitialization:
                     mock_loader.validate_model.return_value = True
                     mock_loader_class.return_value = mock_loader
                     
-                    estimator = ChordEstimationModule()
+                    estimator = ChordEstimationModule(use_chordai=True)
                     
                     # Verify parameters are set correctly
                     assert estimator.hop_length == 512

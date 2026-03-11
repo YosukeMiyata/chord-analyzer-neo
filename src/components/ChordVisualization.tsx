@@ -20,7 +20,34 @@ function ChordVisualization({ chords, currentPosition, onChordClick, tempo = 120
   const BEATS_PER_BAR = 4 // Assuming 4/4 time signature for now
 
   const formatChord = (chord: ChordSegment) => {
-    let chordStr = `${chord.root}${chord.quality}`
+    // Format quality: don't show "maj" for major chords, show nothing
+    let qualityStr = ''
+    if (chord.quality === 'min') {
+      qualityStr = 'm'
+    } else if (chord.quality === '7') {
+      qualityStr = '7'
+    } else if (chord.quality === 'maj7') {
+      qualityStr = 'maj7'
+    } else if (chord.quality === 'min7') {
+      qualityStr = 'm7'
+    } else if (chord.quality === 'dim') {
+      qualityStr = 'dim'
+    } else if (chord.quality === 'aug') {
+      qualityStr = 'aug'
+    } else if (chord.quality === 'sus4') {
+      qualityStr = 'sus4'
+    } else if (chord.quality === 'sus2') {
+      qualityStr = 'sus2'
+    } else if (chord.quality === '9') {
+      qualityStr = '9'
+    } else if (chord.quality === '11') {
+      qualityStr = '11'
+    } else if (chord.quality === '13') {
+      qualityStr = '13'
+    }
+    // For 'maj', show nothing (major is default)
+    
+    let chordStr = `${chord.root}${qualityStr}`
     if (chord.extensions && chord.extensions.length > 0) {
       chordStr += `(${chord.extensions.join(',')})`
     }

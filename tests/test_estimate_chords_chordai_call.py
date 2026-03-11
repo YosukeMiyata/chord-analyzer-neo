@@ -30,7 +30,7 @@ class TestEstimateChordsChordAICall:
                     mock_engine.predict_chords.return_value = []
                     mock_engine_class.return_value = mock_engine
                     
-                    estimator = ChordEstimationModule()
+                    estimator = ChordEstimationModule(use_chordai=True)
                     
                     # Mock the _chordai_recognition method to track calls
                     with patch.object(estimator, '_chordai_recognition', return_value=[]) as mock_chordai:
@@ -46,7 +46,7 @@ class TestEstimateChordsChordAICall:
                         assert mock_chordai.call_count == 1, "_chordai_recognition should be called exactly once"
     
     def test_estimate_chords_passes_chroma_to_chordai(self):
-        """Test that estimate_chords passes chroma features unchanged to _chordai_recognition"""
+        """Test that estimate_chords passes audio unchanged to _chordai_recognition"""
         with patch('src.chord_estimation.ChordEstimationModule._verify_dependencies'):
             with patch('src.chordai_loader.ChordAIModelLoader') as mock_loader_class:
                 with patch('src.chordai_inference.ChordAIInferenceEngine') as mock_engine_class:
@@ -60,15 +60,15 @@ class TestEstimateChordsChordAICall:
                     mock_engine.predict_chords.return_value = []
                     mock_engine_class.return_value = mock_engine
                     
-                    estimator = ChordEstimationModule()
+                    estimator = ChordEstimationModule(use_chordai=True)
                     
                     # Mock the _chordai_recognition method to capture arguments
-                    captured_chroma = None
+                    captured_audio = None
                     captured_sr = None
                     
-                    def capture_args(chroma, sample_rate):
-                        nonlocal captured_chroma, captured_sr
-                        captured_chroma = chroma
+                    def capture_args(audio, sample_rate):
+                        nonlocal captured_audio, captured_sr
+                        captured_audio = audio
                         captured_sr = sample_rate
                         return []
                     
@@ -80,15 +80,15 @@ class TestEstimateChordsChordAICall:
                         # Call estimate_chords
                         estimator.estimate_chords(audio, sample_rate, use_vocal_separation=False)
                         
-                        # Verify chroma was passed
-                        assert captured_chroma is not None, "Chroma should be passed to _chordai_recognition"
+                        # Verify audio was passed
+                        assert captured_audio is not None, "Audio should be passed to _chordai_recognition"
                         assert captured_sr == sample_rate, "Sample rate should be passed unchanged"
                         
-                        # Verify chroma has correct shape (12 x n_frames)
-                        assert captured_chroma.shape[0] == 12, "Chroma should have 12 pitch classes"
+                        # Verify audio has correct shape (1D array)
+                        assert captured_audio.ndim == 1, "Audio should be 1D array"
     
     def test_estimate_chords_does_not_call_simple_chord_recognition(self):
-        """Test that estimate_chords does NOT call _simple_chord_recognition"""
+        """Test that estimate_chords does NOT call _simple_chord_recognition when using ChordAI"""
         with patch('src.chord_estimation.ChordEstimationModule._verify_dependencies'):
             with patch('src.chordai_loader.ChordAIModelLoader') as mock_loader_class:
                 with patch('src.chordai_inference.ChordAIInferenceEngine') as mock_engine_class:
@@ -102,7 +102,7 @@ class TestEstimateChordsChordAICall:
                     mock_engine.predict_chords.return_value = []
                     mock_engine_class.return_value = mock_engine
                     
-                    estimator = ChordEstimationModule()
+                    estimator = ChordEstimationModule(use_chordai=True)
                     
                     # Check if _simple_chord_recognition method exists
                     has_simple_method = hasattr(estimator, '_simple_chord_recognition')
@@ -136,7 +136,7 @@ class TestEstimateChordsChordAICall:
                     mock_engine.predict_chords.return_value = []
                     mock_engine_class.return_value = mock_engine
                     
-                    estimator = ChordEstimationModule()
+                    estimator = ChordEstimationModule(use_chordai=True)
                     
                     # Mock _chordai_recognition to return sample chord segments
                     sample_segments = [

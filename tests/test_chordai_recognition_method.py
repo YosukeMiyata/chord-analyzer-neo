@@ -1,8 +1,8 @@
 """Tests for _chordai_recognition method (Task 6.2)
 
 These tests verify that the _chordai_recognition method correctly:
-- Accepts chroma and sample_rate parameters
-- Calls inference_engine.predict_chords with chroma features
+- Accepts audio and sample_rate parameters
+- Calls inference_engine.predict_chords with audio
 - Maps ChordPrediction objects to ChordSegment objects
 - Returns list of ChordSegment objects
 """
@@ -19,7 +19,7 @@ class TestChordAIRecognitionMethod:
     """Test _chordai_recognition method in ChordEstimationModule"""
     
     def test_chordai_recognition_accepts_parameters(self):
-        """Test that _chordai_recognition accepts chroma and sample_rate parameters"""
+        """Test that _chordai_recognition accepts audio and sample_rate parameters"""
         with patch('src.chord_estimation.ChordEstimationModule._verify_dependencies'):
             with patch('src.chordai_loader.ChordAIModelLoader') as mock_loader_class:
                 with patch('src.chordai_inference.ChordAIInferenceEngine') as mock_engine_class:
@@ -35,12 +35,12 @@ class TestChordAIRecognitionMethod:
                     
                     estimator = ChordEstimationModule()
                     
-                    # Create test chroma features
-                    chroma = np.random.rand(12, 100)
+                    # Create test audio
+                    audio = np.random.rand(22050)
                     sample_rate = 22050
                     
                     # Call method
-                    result = estimator._chordai_recognition(chroma, sample_rate)
+                    result = estimator._chordai_recognition(audio, sample_rate)
                     
                     # Verify it returns a list
                     assert isinstance(result, list)
@@ -62,22 +62,22 @@ class TestChordAIRecognitionMethod:
                     
                     estimator = ChordEstimationModule()
                     
-                    # Create test chroma features
-                    chroma = np.random.rand(12, 100)
+                    # Create test audio
+                    audio = np.random.rand(22050)
                     sample_rate = 22050
                     
                     # Call method
-                    estimator._chordai_recognition(chroma, sample_rate)
+                    estimator._chordai_recognition(audio, sample_rate)
                     
                     # Verify inference engine was called with correct parameters
                     mock_engine.predict_chords.assert_called_once_with(
-                        chroma=chroma,
+                        audio=audio,
                         sample_rate=sample_rate,
                         frame_duration=estimator.frame_duration
                     )
     
     def test_chordai_recognition_passes_chroma_unchanged(self):
-        """Test that chroma features are passed unchanged to inference engine"""
+        """Test that audio is passed unchanged to inference engine"""
         with patch('src.chord_estimation.ChordEstimationModule._verify_dependencies'):
             with patch('src.chordai_loader.ChordAIModelLoader') as mock_loader_class:
                 with patch('src.chordai_inference.ChordAIInferenceEngine') as mock_engine_class:
@@ -93,20 +93,17 @@ class TestChordAIRecognitionMethod:
                     
                     estimator = ChordEstimationModule()
                     
-                    # Create test chroma features with specific values
-                    chroma = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], 
-                                      [7.0, 8.0], [9.0, 10.0], [11.0, 12.0],
-                                      [13.0, 14.0], [15.0, 16.0], [17.0, 18.0],
-                                      [19.0, 20.0], [21.0, 22.0], [23.0, 24.0]])
+                    # Create test audio with specific values
+                    audio = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
                     sample_rate = 22050
                     
                     # Call method
-                    estimator._chordai_recognition(chroma, sample_rate)
+                    estimator._chordai_recognition(audio, sample_rate)
                     
-                    # Verify chroma was passed unchanged
+                    # Verify audio was passed unchanged
                     call_args = mock_engine.predict_chords.call_args
-                    passed_chroma = call_args.kwargs['chroma']
-                    np.testing.assert_array_equal(passed_chroma, chroma)
+                    passed_audio = call_args.kwargs['audio']
+                    np.testing.assert_array_equal(passed_audio, audio)
     
     def test_chordai_recognition_maps_predictions_to_segments(self):
         """Test that ChordPrediction objects are mapped to ChordSegment objects"""
@@ -132,12 +129,12 @@ class TestChordAIRecognitionMethod:
                     
                     estimator = ChordEstimationModule()
                     
-                    # Create test chroma features
-                    chroma = np.random.rand(12, 100)
+                    # Create test audio
+                    audio = np.random.rand(22050)
                     sample_rate = 22050
                     
                     # Call method
-                    result = estimator._chordai_recognition(chroma, sample_rate)
+                    result = estimator._chordai_recognition(audio, sample_rate)
                     
                     # Verify result is a list of ChordSegment objects
                     assert isinstance(result, list)
@@ -167,12 +164,12 @@ class TestChordAIRecognitionMethod:
                     
                     estimator = ChordEstimationModule()
                     
-                    # Create test chroma features
-                    chroma = np.random.rand(12, 100)
+                    # Create test audio
+                    audio = np.random.rand(22050)
                     sample_rate = 22050
                     
                     # Call method
-                    result = estimator._chordai_recognition(chroma, sample_rate)
+                    result = estimator._chordai_recognition(audio, sample_rate)
                     
                     # Verify result structure
                     assert len(result) == 2
@@ -214,12 +211,12 @@ class TestChordAIRecognitionMethod:
                     
                     estimator = ChordEstimationModule()
                     
-                    # Create test chroma features
-                    chroma = np.random.rand(12, 100)
+                    # Create test audio
+                    audio = np.random.rand(22050)
                     sample_rate = 22050
                     
                     # Call method
-                    result = estimator._chordai_recognition(chroma, sample_rate)
+                    result = estimator._chordai_recognition(audio, sample_rate)
                     
                     # Verify bass notes are preserved
                     assert result[0].bass_note == "G"
@@ -243,13 +240,13 @@ class TestChordAIRecognitionMethod:
                     
                     estimator = ChordEstimationModule()
                     
-                    # Create test chroma features
-                    chroma = np.random.rand(12, 100)
+                    # Create test audio
+                    audio = np.random.rand(22050)
                     sample_rate = 22050
                     
                     # Call method and expect RuntimeError
                     with pytest.raises(RuntimeError) as exc_info:
-                        estimator._chordai_recognition(chroma, sample_rate)
+                        estimator._chordai_recognition(audio, sample_rate)
                     
                     assert "ChordAI recognition failed" in str(exc_info.value)
     
@@ -271,12 +268,12 @@ class TestChordAIRecognitionMethod:
                     
                     estimator = ChordEstimationModule()
                     
-                    # Create test chroma features
-                    chroma = np.random.rand(12, 100)
+                    # Create test audio
+                    audio = np.random.rand(22050)
                     sample_rate = 22050
                     
                     # Call method
-                    result = estimator._chordai_recognition(chroma, sample_rate)
+                    result = estimator._chordai_recognition(audio, sample_rate)
                     
                     # Verify empty list is returned
                     assert isinstance(result, list)
