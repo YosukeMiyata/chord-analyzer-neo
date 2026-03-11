@@ -6,7 +6,7 @@ This plan implements a comprehensive evaluation system for chord recognition acc
 
 ## Tasks
 
-- [~] 1. Set up evaluation system structure and core data models
+- [x] 1. Set up evaluation system structure and core data models
   - Create directory structure: `src/evaluation/`
   - Define data models: `ChordAnnotation`, `EvaluationMetrics`, `BenchmarkResult`, `OptimizationConfig`, `OptimizedParameters`
   - Implement validation logic for all data models
@@ -19,7 +19,7 @@ This plan implements a comprehensive evaluation system for chord recognition acc
   - **Validates: Requirements 13.1, 13.2, 13.3, 13.4, 13.5**
 
 - [ ] 2. Implement Ground Truth Parser
-  - [~] 2.1 Create parser base class and format detection
+  - [x] 2.1 Create parser base class and format detection
     - Implement `GroundTruthParser` class with `detect_format()` method
     - Add format detection logic for chord-only, lyrics-with-chords, lyrics-only
     - _Requirements: 9.1, 9.2, 9.3, 9.4_
@@ -28,7 +28,7 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Property 4: Format Detection Correctness** - detected format matches actual format
     - **Validates: Requirements 9.1, 9.2, 9.3**
   
-  - [~] 2.3 Implement chord-only format parser
+  - [x] 2.3 Implement chord-only format parser
     - Parse pattern `[D][AonC#][Bm7]` using regex
     - Extract chords with sequential positions
     - Handle empty brackets
@@ -38,7 +38,7 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Property 1: Parsing Extracts All Chords** - all chords extracted with sequential positions
     - **Validates: Requirements 1.1**
   
-  - [~] 2.5 Implement lyrics-with-chords format parser
+  - [x] 2.5 Implement lyrics-with-chords format parser
     - Parse pattern `涙[D]があふれ[AonC#]る` using regex
     - Extract chords with character positions
     - Preserve position accuracy
@@ -48,7 +48,7 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Property 2: Parsing Preserves Character Positions** - positions match character indices
     - **Validates: Requirements 1.2**
   
-  - [~] 2.7 Implement lyrics-only format handler
+  - [x] 2.7 Implement lyrics-only format handler
     - Return empty list for lyrics without chords
     - _Requirements: 1.3_
   
@@ -56,13 +56,13 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Property 3: Position Monotonicity** - positions monotonically increasing
     - **Validates: Requirements 1.6**
   
-  - [~] 2.9 Add error handling for invalid formats
+  - [x] 2.9 Add error handling for invalid formats
     - Raise ValueError with descriptive messages
     - Provide format detection hints
     - _Requirements: 11.1, 11.2, 11.3_
 
 - [ ] 3. Implement chord analysis utilities
-  - [~] 3.1 Create root note extraction function
+  - [x] 3.1 Create root note extraction function
     - Extract root from simple chords (D, Am)
     - Extract root from slash chords (AonC#)
     - Extract root from chords with quality suffix (Bm7, Cmaj7)
@@ -73,7 +73,7 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Property 6: Root Extraction Correctness** - root extracted correctly for all chord types
     - **Validates: Requirements 3.1, 3.2, 3.3, 3.4**
   
-  - [~] 3.3 Create chord quality identification function
+  - [x] 3.3 Create chord quality identification function
     - Identify major, minor, seventh, major seventh qualities
     - Handle various chord suffixes
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
@@ -82,28 +82,28 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Property 7: Quality Identification Correctness** - quality matches chord suffix
     - **Validates: Requirements 4.1, 4.2, 4.3, 4.4**
 
-- [~] 4. Checkpoint - Ensure parser and utilities tests pass
+- [ ] 4. Checkpoint - Ensure parser and utilities tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 5. Implement Evaluator core metrics
-  - [~] 5.1 Create Evaluator class with sequence accuracy calculation
+  - [x] 5.1 Create Evaluator class with sequence accuracy calculation
     - Implement exact sequence matching
     - Calculate match rate
     - _Requirements: 2.1_
   
-  - [~] 5.2 Implement root accuracy calculation
+  - [x] 5.2 Implement root accuracy calculation
     - Use root extraction utility
     - Compare root notes between predicted and ground truth
     - Calculate accuracy percentage
     - _Requirements: 2.2, 3.1, 3.2, 3.3, 3.4_
   
-  - [~] 5.3 Implement quality accuracy calculation
+  - [x] 5.3 Implement quality accuracy calculation
     - Use quality identification utility
     - Compare chord qualities between predicted and ground truth
     - Calculate accuracy percentage
     - _Requirements: 2.3, 4.1, 4.2, 4.3, 4.4_
   
-  - [~] 5.4 Implement exact match rate calculation
+  - [x] 5.4 Implement exact match rate calculation
     - Count exact chord matches
     - Calculate match rate
     - _Requirements: 2.5_
@@ -113,7 +113,7 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Validates: Requirements 2.6, 2.7**
 
 - [ ] 6. Implement DTW distance calculation
-  - [~] 6.1 Create chord distance function
+  - [ ] 6.1 Create chord distance function
     - Return 0.0 for identical chords
     - Return 0.5 for same root, different quality
     - Return 1.0 for different roots
@@ -123,13 +123,13 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Property 9: DTW Chord Distance Function** - distance values match specification
     - **Validates: Requirements 5.4**
   
-  - [~] 6.3 Implement DTW matrix calculation
+  - [ ] 6.3 Implement DTW matrix calculation
     - Initialize DTW matrix with infinity
     - Fill matrix using dynamic programming
     - Handle sequences of different lengths
     - _Requirements: 5.1, 5.3_
   
-  - [~] 6.4 Add DTW normalization
+  - [ ] 6.4 Add DTW normalization
     - Normalize by path length (sum of sequence lengths)
     - _Requirements: 5.5_
   
@@ -141,12 +141,12 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Property 10: DTW Normalization** - distance normalized by path length
     - **Validates: Requirements 5.5**
   
-  - [~] 6.7 Integrate DTW into Evaluator
+  - [ ] 6.7 Integrate DTW into Evaluator
     - Add DTW distance to evaluation metrics
     - _Requirements: 2.4_
 
 - [ ] 7. Implement sequence alignment
-  - [~] 7.1 Create alignment function for different length sequences
+  - [ ] 7.1 Create alignment function for different length sequences
     - Implement alignment strategy to minimize distortion
     - Ensure aligned sequences have same length
     - Preserve original sequences
@@ -161,7 +161,7 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Validates: Requirements 10.4**
 
 - [ ] 8. Complete Evaluator with main evaluation method
-  - [~] 8.1 Implement main `evaluate()` method
+  - [ ] 8.1 Implement main `evaluate()` method
     - Align sequences if lengths differ
     - Calculate all metrics (sequence, root, quality, DTW, exact match)
     - Return EvaluationMetrics object
@@ -175,18 +175,18 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - Test complete mismatches
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.8_
 
-- [~] 9. Checkpoint - Ensure evaluator tests pass
+- [ ] 9. Checkpoint - Ensure evaluator tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 10. Implement Benchmark Tool
-  - [~] 10.1 Create BenchmarkTool class with file discovery
+  - [ ] 10.1 Create BenchmarkTool class with file discovery
     - Scan audio and ground truth directories
     - Match audio files with ground truth files
     - Log warnings for missing pairs
     - Validate file paths to prevent path traversal
     - _Requirements: 6.1, 6.2, 12.4, 15.1_
   
-  - [~] 10.2 Implement single song processing
+  - [ ] 10.2 Implement single song processing
     - Parse ground truth file
     - Run chord recognition on audio file
     - Align sequences
@@ -199,14 +199,14 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Property 13: Benchmark Result Structure** - result contains all required fields
     - **Validates: Requirements 6.3**
   
-  - [~] 10.4 Implement batch processing with error handling
+  - [ ] 10.4 Implement batch processing with error handling
     - Process all file pairs
     - Continue on individual file failures
     - Log errors with file names and exception details
     - Return list of successful results
     - _Requirements: 6.5, 12.1, 12.2, 12.3_
   
-  - [~] 10.5 Implement aggregate statistics calculation
+  - [ ] 10.5 Implement aggregate statistics calculation
     - Calculate mean, standard deviation, min, max for each metric
     - Handle empty results list
     - _Requirements: 6.4_
@@ -216,13 +216,13 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Validates: Requirements 6.4**
 
 - [ ] 11. Implement report generation
-  - [~] 11.1 Create JSON report generator
+  - [ ] 11.1 Create JSON report generator
     - Include aggregate statistics
     - Include per-song detailed results
     - Save to specified output path
     - _Requirements: 7.1, 7.3, 7.4, 7.5_
   
-  - [~] 11.2 Create Markdown report generator
+  - [ ] 11.2 Create Markdown report generator
     - Format aggregate statistics in table
     - Format per-song results in readable format
     - Save to specified output path
@@ -233,7 +233,7 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Validates: Requirements 7.3, 7.4**
 
 - [ ] 12. Implement security and validation
-  - [~] 12.1 Add file path validation
+  - [ ] 12.1 Add file path validation
     - Prevent path traversal attacks
     - Validate paths are within allowed directories
     - _Requirements: 12.4, 15.1_
@@ -242,7 +242,7 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Property 21: Path Traversal Prevention** - traversal patterns rejected
     - **Validates: Requirements 12.4, 15.1**
   
-  - [~] 12.3 Add file size limit enforcement
+  - [ ] 12.3 Add file size limit enforcement
     - Check ground truth file sizes before reading
     - Reject files exceeding maximum size
     - _Requirements: 15.2_
@@ -251,26 +251,26 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Property 22: File Size Limit Enforcement** - oversized files rejected
     - **Validates: Requirements 15.2**
   
-  - [~] 12.5 Add input sanitization for regex patterns
+  - [ ] 12.5 Add input sanitization for regex patterns
     - Sanitize inputs to prevent regex injection
     - _Requirements: 15.3_
 
-- [~] 13. Checkpoint - Ensure benchmark tool tests pass
+- [ ] 13. Checkpoint - Ensure benchmark tool tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 14. Implement Parameter Optimizer
-  - [~] 14.1 Create ParameterOptimizer class with grid generation
+  - [ ] 14.1 Create ParameterOptimizer class with grid generation
     - Generate parameter grid from ranges
     - Support penalty and threshold parameters
     - _Requirements: 8.1_
   
-  - [~] 14.2 Implement single parameter evaluation
+  - [ ] 14.2 Implement single parameter evaluation
     - Update system parameters
     - Run benchmark
     - Calculate target metric
     - _Requirements: 8.2_
   
-  - [~] 14.3 Implement grid search optimization
+  - [ ] 14.3 Implement grid search optimization
     - Iterate over parameter grid
     - Track best score and parameters
     - Return optimized parameters
@@ -285,7 +285,7 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Validates: Requirements 8.5**
 
 - [ ] 15. Implement performance optimizations
-  - [~] 15.1 Add caching for audio processing
+  - [ ] 15.1 Add caching for audio processing
     - Cache audio processing results during optimization
     - Use file path as cache key
     - _Requirements: 14.2_
@@ -294,18 +294,18 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Property 25: Cache Hit Efficiency** - subsequent processing uses cache
     - **Validates: Requirements 14.2**
   
-  - [~] 15.3 Add progress indicators for long-running operations
+  - [ ] 15.3 Add progress indicators for long-running operations
     - Show progress during benchmark execution
     - Show progress during optimization
     - _Requirements: 14.4_
   
-  - [~] 15.4 Consider parallel processing for benchmark tool
+  - [ ] 15.4 Consider parallel processing for benchmark tool
     - Use multiprocessing for concurrent song processing
     - Handle process pool management
     - _Requirements: 14.1_
 
 - [ ] 16. Add comprehensive error handling
-  - [~] 16.1 Implement error handling for invalid formats
+  - [ ] 16.1 Implement error handling for invalid formats
     - Raise ValueError with descriptive messages
     - Include format detection hints
     - _Requirements: 11.1, 11.2, 11.3_
@@ -314,7 +314,7 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Property 24: Invalid Format Error Messages** - error messages are descriptive
     - **Validates: Requirements 11.1, 11.3**
   
-  - [~] 16.3 Implement error handling for file operations
+  - [ ] 16.3 Implement error handling for file operations
     - Log errors with file names and exception details
     - Continue processing on individual failures
     - _Requirements: 12.1, 12.2, 12.3_
@@ -324,7 +324,7 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Validates: Requirements 12.1, 12.2, 12.3**
 
 - [ ] 17. Create integration and wiring
-  - [~] 17.1 Wire all components together
+  - [ ] 17.1 Wire all components together
     - Connect Parser, Evaluator, BenchmarkTool, Optimizer
     - Create main evaluation workflow function
     - Integrate with existing audio_engine
@@ -337,7 +337,7 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - Use real audio files and ground truth data
     - _Requirements: All requirements_
 
-- [~] 18. Final checkpoint - Ensure all tests pass
+- [ ] 18. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes
