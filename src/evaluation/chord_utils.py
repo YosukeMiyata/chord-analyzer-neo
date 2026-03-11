@@ -3,8 +3,9 @@
 This module provides helper functions for extracting and analyzing chord components:
 - Root note extraction from various chord formats
 - Chord quality identification
+- Chord distance calculation for DTW
 
-Validates: Requirements 3.1, 3.2, 3.3, 3.4, 4.1, 4.2, 4.3, 4.4, 4.5
+Validates: Requirements 3.1, 3.2, 3.3, 3.4, 4.1, 4.2, 4.3, 4.4, 4.5, 5.4
 """
 
 import re
@@ -180,3 +181,54 @@ def identify_quality(chord: str) -> str:
     
     # Default to major if no quality suffix
     return "major"
+
+
+def chord_distance(chord1: str, chord2: str) -> float:
+    """Calculate distance between two chords for DTW calculation.
+    
+    This function measures the similarity between two chords using a simple
+    distance metric:
+    - 0.0: Chords are identical
+    - 0.5: Same root note, different quality
+    - 1.0: Different root notes
+    
+    This distance function is used in Dynamic Time Warping (DTW) calculations
+    to measure the similarity between chord sequences.
+    
+    Args:
+        chord1: First chord name (e.g., "D", "Am", "Bm7")
+        chord2: Second chord name (e.g., "D", "Dm", "A")
+        
+    Returns:
+        Distance value: 0.0, 0.5, or 1.0
+        
+    Examples:
+        >>> chord_distance("D", "D")
+        0.0
+        >>> chord_distance("D", "Dm")
+        0.5
+        >>> chord_distance("D", "A")
+        1.0
+        >>> chord_distance("Bm7", "Bm")
+        0.5
+        >>> chord_distance("C", "G")
+        1.0
+        >>> chord_distance("AonC#", "A")
+        0.5
+        
+    Validates: Requirements 5.4
+    """
+    # If chords are identical, distance is 0.0
+    if chord1 == chord2:
+        return 0.0
+    
+    # Extract root notes from both chords
+    root1 = extract_root(chord1)
+    root2 = extract_root(chord2)
+    
+    # If root notes match, distance is 0.5 (same root, different quality)
+    if root1 == root2:
+        return 0.5
+    
+    # If root notes differ, distance is 1.0
+    return 1.0

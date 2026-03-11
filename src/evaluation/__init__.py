@@ -8,6 +8,7 @@ from .models import (
     OptimizedParameters,
 )
 from .chord_utils import extract_root
+from .benchmark import BenchmarkTool
 
 __all__ = [
     "ChordAnnotation",
@@ -16,4 +17,5 @@ __all__ = [
     "OptimizationConfig",
     "OptimizedParameters",
     "extract_root",
+    "BenchmarkTool",
 ]

@@ -325,3 +325,135 @@ class TestIdentifyQuality:
         assert identify_quality("  Am  ") == "minor"
         assert identify_quality(" D7 ") == "seventh"
         assert identify_quality(" Cmaj7 ") == "major_seventh"
+
+
+
+class TestChordDistance:
+    """Tests for chord_distance function.
+    
+    Validates: Requirements 5.4
+    """
+    
+    def test_identical_chords_return_zero(self):
+        """Test that identical chords have distance 0.0."""
+        from src.evaluation.chord_utils import chord_distance
+        
+        assert chord_distance("D", "D") == 0.0
+        assert chord_distance("Am", "Am") == 0.0
+        assert chord_distance("Bm7", "Bm7") == 0.0
+        assert chord_distance("Cmaj7", "Cmaj7") == 0.0
+        assert chord_distance("F#m7b5", "F#m7b5") == 0.0
+        assert chord_distance("AonC#", "AonC#") == 0.0
+        assert chord_distance("D/F#", "D/F#") == 0.0
+    
+    def test_same_root_different_quality_returns_half(self):
+        """Test that same root with different quality has distance 0.5."""
+        from src.evaluation.chord_utils import chord_distance
+        
+        # Major to minor
+        assert chord_distance("D", "Dm") == 0.5
+        assert chord_distance("A", "Am") == 0.5
+        assert chord_distance("C", "Cm") == 0.5
+        
+        # Major to seventh
+        assert chord_distance("D", "D7") == 0.5
+        assert chord_distance("G", "G7") == 0.5
+        
+        # Major to major seventh
+        assert chord_distance("C", "Cmaj7") == 0.5
+        assert chord_distance("D", "Dmaj7") == 0.5
+        
+        # Minor to minor seventh
+        assert chord_distance("Bm", "Bm7") == 0.5
+        assert chord_distance("Am", "Am7") == 0.5
+        
+        # Seventh to major seventh
+        assert chord_distance("D7", "Dmaj7") == 0.5
+        assert chord_distance("G7", "Gmaj7") == 0.5
+        
+        # With accidentals
+        assert chord_distance("F#", "F#m") == 0.5
+        assert chord_distance("Bb", "Bbm7") == 0.5
+        assert chord_distance("C#m", "C#maj7") == 0.5
+        
+        # Slash chords with same root
+        assert chord_distance("D", "D/F#") == 0.5
+        assert chord_distance("AonC#", "A") == 0.5
+        assert chord_distance("Am", "AonC#") == 0.5
+    
+    def test_different_roots_return_one(self):
+        """Test that different root notes have distance 1.0."""
+        from src.evaluation.chord_utils import chord_distance
+        
+        # Simple major chords
+        assert chord_distance("D", "A") == 1.0
+        assert chord_distance("C", "G") == 1.0
+        assert chord_distance("E", "F") == 1.0
+        
+        # Major to different minor
+        assert chord_distance("D", "Am") == 1.0
+        assert chord_distance("C", "Dm") == 1.0
+        
+        # Minor to different minor
+        assert chord_distance("Am", "Bm") == 1.0
+        assert chord_distance("Dm", "Em") == 1.0
+        
+        # Seventh chords with different roots
+        assert chord_distance("D7", "A7") == 1.0
+        assert chord_distance("Cmaj7", "Gmaj7") == 1.0
+        assert chord_distance("Bm7", "Am7") == 1.0
+        
+        # With accidentals
+        assert chord_distance("F#", "G") == 1.0
+        assert chord_distance("Bb", "C") == 1.0
+        assert chord_distance("C#m", "Dm") == 1.0
+        
+        # Slash chords with different roots
+        assert chord_distance("D/F#", "A/C#") == 1.0
+        assert chord_distance("AonC#", "DonF#") == 1.0
+    
+    def test_complex_chord_combinations(self):
+        """Test distance calculation with complex chord combinations."""
+        from src.evaluation.chord_utils import chord_distance
+        
+        # Complex suffixes, same root
+        assert chord_distance("F#m7b5", "F#m") == 0.5
+        assert chord_distance("Bb9", "Bb7") == 0.5
+        assert chord_distance("Cadd9", "C") == 0.5
+        
+        # Complex suffixes, different roots
+        assert chord_distance("F#m7b5", "Gm7b5") == 1.0
+        assert chord_distance("Bb9", "C9") == 1.0
+        assert chord_distance("Cadd9", "Dadd9") == 1.0
+    
+    def test_symmetry(self):
+        """Test that chord distance is symmetric: distance(A, B) == distance(B, A)."""
+        from src.evaluation.chord_utils import chord_distance
+        
+        # Identical chords
+        assert chord_distance("D", "D") == chord_distance("D", "D")
+        
+        # Same root, different quality
+        assert chord_distance("D", "Dm") == chord_distance("Dm", "D")
+        assert chord_distance("A", "Am7") == chord_distance("Am7", "A")
+        assert chord_distance("Cmaj7", "C7") == chord_distance("C7", "Cmaj7")
+        
+        # Different roots
+        assert chord_distance("D", "A") == chord_distance("A", "D")
+        assert chord_distance("C", "G") == chord_distance("G", "C")
+        assert chord_distance("Am", "Bm") == chord_distance("Bm", "Am")
+    
+    def test_distance_values_are_valid(self):
+        """Test that all distance values are one of 0.0, 0.5, or 1.0."""
+        from src.evaluation.chord_utils import chord_distance
+        
+        test_chords = [
+            "D", "Am", "Bm7", "Cmaj7", "F#m7b5", "Bb9", "G7",
+            "AonC#", "D/F#", "Gsus4", "Cadd9", "Dm9"
+        ]
+        
+        for chord1 in test_chords:
+            for chord2 in test_chords:
+                distance = chord_distance(chord1, chord2)
+                assert distance in [0.0, 0.5, 1.0], \
+                    f"Invalid distance {distance} for chords {chord1} and {chord2}"

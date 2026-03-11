@@ -217,5 +217,140 @@ class Evaluator:
         match_rate = matches / len(predicted)
         return match_rate
 
+    def calculate_dtw_distance(
+        self,
+        predicted: List[str],
+        ground_truth: List[str]
+    ) -> float:
+        """Calculate Dynamic Time Warping distance between chord sequences.
+
+        Implements the DTW algorithm using dynamic programming to find the optimal
+        alignment between two chord sequences. The distance is calculated using
+        the chord_distance function which returns 0.0 for identical chords, 0.5
+        for same root but different quality, and 1.0 for different roots.
+
+        The DTW distance is normalized by dividing by the path length (sum of
+        sequence lengths) to make it comparable across sequences of different lengths.
+
+        Args:
+            predicted: List of predicted chord names
+            ground_truth: List of ground truth chord names
+
+        Returns:
+            float: Non-negative normalized DTW distance
+
+        Validates: Requirements 5.1, 5.3, 5.5
+
+        Examples:
+            >>> evaluator = Evaluator()
+            >>> evaluator.calculate_dtw_distance(["D", "A"], ["D", "A"])
+            0.0
+            >>> evaluator.calculate_dtw_distance(["D", "A"], ["D", "G"])
+            0.25
+            >>> evaluator.calculate_dtw_distance(["D"], ["A"])
+            0.5
+        """
+        from src.evaluation.chord_utils import chord_distance
+        import numpy as np
+
+        # Handle empty sequences
+        if not predicted or not ground_truth:
+            return 0.0
+
+        n = len(predicted)
+        m = len(ground_truth)
+
+        # Initialize DTW matrix with infinity
+        dtw_matrix = np.full((n + 1, m + 1), np.inf)
+        
+        # Set starting point
+        dtw_matrix[0, 0] = 0.0
+
+        # Fill DTW matrix using dynamic programming
+        for i in range(1, n + 1):
+            for j in range(1, m + 1):
+                # Calculate cost using chord_distance
+                cost = chord_distance(predicted[i-1], ground_truth[j-1])
+                
+                # Find minimum path: insertion, deletion, or match
+                dtw_matrix[i, j] = cost + min(
+                    dtw_matrix[i-1, j],      # Insertion
+                    dtw_matrix[i, j-1],      # Deletion
+                    dtw_matrix[i-1, j-1]     # Match
+                )
+
+        # Normalize by path length (sum of sequence lengths)
+        path_length = n + m
+        normalized_distance = dtw_matrix[n, m] / path_length
+        
+        return normalized_distance
+
+    def evaluate(
+        self,
+        predicted: List[str],
+        ground_truth: List[str],
+        align_sequences: bool = True
+    ) -> EvaluationMetrics:
+        """Evaluate predicted chords against ground truth.
+
+        Calculates all evaluation metrics by comparing predicted chord sequences
+        against ground truth sequences. This is the main evaluation method that
+        integrates all individual metric calculations.
+        
+        If the sequences have different lengths and align_sequences is True,
+        the sequences will be aligned using DTW-based alignment before calculating
+        metrics (except DTW distance which is calculated on original sequences).
+
+        Args:
+            predicted: List of predicted chord names
+            ground_truth: List of ground truth chord names
+            align_sequences: Whether to align sequences of different lengths (default: True)
+
+        Returns:
+            EvaluationMetrics: Object containing all calculated metrics
+
+        Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 10.1, 10.2, 10.3, 10.4
+
+        Examples:
+            >>> evaluator = Evaluator()
+            >>> metrics = evaluator.evaluate(["D", "A", "Bm7", "G"], ["D", "A", "Bm7", "G"])
+            >>> metrics.sequence_accuracy
+            1.0
+            >>> metrics.root_accuracy
+            1.0
+            >>> metrics.quality_accuracy
+            1.0
+            >>> metrics.dtw_distance
+            0.0
+            >>> metrics.exact_match_rate
+            1.0
+        """
+        # Align sequences if they have different lengths
+        if align_sequences and len(predicted) != len(ground_truth):
+            from src.evaluation.alignment import align_sequences as align_fn
+            aligned_predicted, aligned_ground_truth = align_fn(predicted, ground_truth)
+        else:
+            aligned_predicted = predicted
+            aligned_ground_truth = ground_truth
+        
+        # Calculate all metrics using aligned sequences
+        seq_accuracy = self.sequence_match(aligned_predicted, aligned_ground_truth)
+        root_acc = self.root_accuracy(aligned_predicted, aligned_ground_truth)
+        quality_acc = self.quality_accuracy(aligned_predicted, aligned_ground_truth)
+        exact_match = self.exact_match_rate(aligned_predicted, aligned_ground_truth)
+        
+        # DTW distance is calculated on original sequences (not aligned)
+        # because DTW itself performs alignment internally
+        dtw_dist = self.calculate_dtw_distance(predicted, ground_truth)
+
+        # Create and return EvaluationMetrics object
+        return EvaluationMetrics(
+            sequence_accuracy=seq_accuracy,
+            root_accuracy=root_acc,
+            quality_accuracy=quality_acc,
+            dtw_distance=dtw_dist,
+            exact_match_rate=exact_match
+        )
+
 
 

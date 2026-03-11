@@ -113,7 +113,7 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Validates: Requirements 2.6, 2.7**
 
 - [ ] 6. Implement DTW distance calculation
-  - [ ] 6.1 Create chord distance function
+  - [x] 6.1 Create chord distance function
     - Return 0.0 for identical chords
     - Return 0.5 for same root, different quality
     - Return 1.0 for different roots
@@ -123,13 +123,13 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Property 9: DTW Chord Distance Function** - distance values match specification
     - **Validates: Requirements 5.4**
   
-  - [ ] 6.3 Implement DTW matrix calculation
+  - [x] 6.3 Implement DTW matrix calculation
     - Initialize DTW matrix with infinity
     - Fill matrix using dynamic programming
     - Handle sequences of different lengths
     - _Requirements: 5.1, 5.3_
   
-  - [ ] 6.4 Add DTW normalization
+  - [x] 6.4 Add DTW normalization
     - Normalize by path length (sum of sequence lengths)
     - _Requirements: 5.5_
   
@@ -146,7 +146,7 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - _Requirements: 2.4_
 
 - [ ] 7. Implement sequence alignment
-  - [ ] 7.1 Create alignment function for different length sequences
+  - [x] 7.1 Create alignment function for different length sequences
     - Implement alignment strategy to minimize distortion
     - Ensure aligned sequences have same length
     - Preserve original sequences
@@ -161,7 +161,7 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Validates: Requirements 10.4**
 
 - [ ] 8. Complete Evaluator with main evaluation method
-  - [ ] 8.1 Implement main `evaluate()` method
+  - [x] 8.1 Implement main `evaluate()` method
     - Align sequences if lengths differ
     - Calculate all metrics (sequence, root, quality, DTW, exact match)
     - Return EvaluationMetrics object
@@ -179,14 +179,14 @@ This plan implements a comprehensive evaluation system for chord recognition acc
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 10. Implement Benchmark Tool
-  - [ ] 10.1 Create BenchmarkTool class with file discovery
+  - [x] 10.1 Create BenchmarkTool class with file discovery
     - Scan audio and ground truth directories
     - Match audio files with ground truth files
     - Log warnings for missing pairs
     - Validate file paths to prevent path traversal
     - _Requirements: 6.1, 6.2, 12.4, 15.1_
   
-  - [ ] 10.2 Implement single song processing
+  - [x] 10.2 Implement single song processing
     - Parse ground truth file
     - Run chord recognition on audio file
     - Align sequences
@@ -199,14 +199,14 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Property 13: Benchmark Result Structure** - result contains all required fields
     - **Validates: Requirements 6.3**
   
-  - [ ] 10.4 Implement batch processing with error handling
+  - [x] 10.4 Implement batch processing with error handling
     - Process all file pairs
     - Continue on individual file failures
     - Log errors with file names and exception details
     - Return list of successful results
     - _Requirements: 6.5, 12.1, 12.2, 12.3_
   
-  - [ ] 10.5 Implement aggregate statistics calculation
+  - [x] 10.5 Implement aggregate statistics calculation
     - Calculate mean, standard deviation, min, max for each metric
     - Handle empty results list
     - _Requirements: 6.4_

@@ -2,6 +2,7 @@
 
 import pytest
 from src.evaluation.evaluator import Evaluator
+from src.evaluation.models import EvaluationMetrics
 
 
 class TestSequenceMatch:
@@ -672,3 +673,400 @@ class TestExactMatchRate:
         # exact_match_rate should return 0.75 (3 out of 4 match)
         exact_match_result = evaluator.exact_match_rate(predicted, ground_truth)
         assert exact_match_result == 0.75
+
+
+
+class TestCalculateDTWDistance:
+    """Tests for the calculate_dtw_distance method."""
+    
+    def test_identical_sequences_zero_distance(self):
+        """Test that identical sequences have zero DTW distance."""
+        evaluator = Evaluator()
+        predicted = ["D", "A"]
+        ground_truth = ["D", "A"]
+        
+        result = evaluator.calculate_dtw_distance(predicted, ground_truth)
+        
+        assert result == 0.0
+    
+    def test_one_different_chord_distance_one(self):
+        """Test that one different chord results in normalized distance 0.25."""
+        evaluator = Evaluator()
+        predicted = ["D", "A"]
+        ground_truth = ["D", "G"]
+        
+        result = evaluator.calculate_dtw_distance(predicted, ground_truth)
+        
+        # D matches D (cost 0.0), A vs G (cost 1.0)
+        # DTW path: [0,0] -> [1,1] -> [2,2]
+        # Raw total: 0.0 + 1.0 = 1.0
+        # Path length: 2 + 2 = 4
+        # Normalized: 1.0 / 4 = 0.25
+        assert result == 0.25
+    
+    def test_same_root_different_quality_distance_half(self):
+        """Test that same root with different quality has normalized distance 0.25."""
+        evaluator = Evaluator()
+        predicted = ["D"]
+        ground_truth = ["Dm"]
+        
+        result = evaluator.calculate_dtw_distance(predicted, ground_truth)
+        
+        # D vs Dm: same root, different quality (cost 0.5)
+        # Path length: 1 + 1 = 2
+        # Normalized: 0.5 / 2 = 0.25
+        assert result == 0.25
+    
+    def test_different_length_sequences(self):
+        """Test DTW with sequences of different lengths."""
+        evaluator = Evaluator()
+        predicted = ["D", "A", "G"]
+        ground_truth = ["D", "A"]
+        
+        result = evaluator.calculate_dtw_distance(predicted, ground_truth)
+        
+        # DTW should handle different lengths
+        # Optimal path: D->D (0.0), A->A (0.0), G->A (1.0)
+        # Raw total: 1.0
+        # Path length: 3 + 2 = 5
+        # Normalized: 1.0 / 5 = 0.2
+        assert result == 0.2
+    
+    def test_longer_ground_truth_sequence(self):
+        """Test DTW when ground truth is longer."""
+        evaluator = Evaluator()
+        predicted = ["D", "A"]
+        ground_truth = ["D", "A", "G"]
+        
+        result = evaluator.calculate_dtw_distance(predicted, ground_truth)
+        
+        # DTW should handle different lengths
+        # Optimal path: D->D (0.0), A->A (0.0), A->G (1.0)
+        # Raw total: 1.0
+        # Path length: 2 + 3 = 5
+        # Normalized: 1.0 / 5 = 0.2
+        assert result == 0.2
+    
+    def test_completely_different_sequences(self):
+        """Test DTW with completely different chord sequences."""
+        evaluator = Evaluator()
+        predicted = ["D", "A"]
+        ground_truth = ["C", "F"]
+        
+        result = evaluator.calculate_dtw_distance(predicted, ground_truth)
+        
+        # D vs C (cost 1.0), A vs F (cost 1.0)
+        # Raw total: 2.0
+        # Path length: 2 + 2 = 4
+        # Normalized: 2.0 / 4 = 0.5
+        assert result == 0.5
+    
+    def test_single_chord_identical(self):
+        """Test DTW with single identical chord."""
+        evaluator = Evaluator()
+        predicted = ["D"]
+        ground_truth = ["D"]
+        
+        result = evaluator.calculate_dtw_distance(predicted, ground_truth)
+        
+        assert result == 0.0
+    
+    def test_single_chord_different(self):
+        """Test DTW with single different chord."""
+        evaluator = Evaluator()
+        predicted = ["D"]
+        ground_truth = ["A"]
+        
+        result = evaluator.calculate_dtw_distance(predicted, ground_truth)
+        
+        # D vs A (cost 1.0)
+        # Path length: 1 + 1 = 2
+        # Normalized: 1.0 / 2 = 0.5
+        assert result == 0.5
+    
+    def test_empty_predicted_returns_zero(self):
+        """Test that empty predicted sequence returns 0.0."""
+        evaluator = Evaluator()
+        predicted = []
+        ground_truth = ["D", "A", "G"]
+        
+        result = evaluator.calculate_dtw_distance(predicted, ground_truth)
+        
+        assert result == 0.0
+    
+    def test_empty_ground_truth_returns_zero(self):
+        """Test that empty ground truth sequence returns 0.0."""
+        evaluator = Evaluator()
+        predicted = ["D", "A", "G"]
+        ground_truth = []
+        
+        result = evaluator.calculate_dtw_distance(predicted, ground_truth)
+        
+        assert result == 0.0
+    
+    def test_both_empty_returns_zero(self):
+        """Test that both empty sequences return 0.0."""
+        evaluator = Evaluator()
+        predicted = []
+        ground_truth = []
+        
+        result = evaluator.calculate_dtw_distance(predicted, ground_truth)
+        
+        assert result == 0.0
+    
+    def test_complex_sequence_alignment(self):
+        """Test DTW with complex chord sequences."""
+        evaluator = Evaluator()
+        predicted = ["D", "A", "Bm7", "G"]
+        ground_truth = ["D", "AonC#", "Bm7", "G"]
+        
+        result = evaluator.calculate_dtw_distance(predicted, ground_truth)
+        
+        # D vs D (0.0), A vs AonC# (0.5 - same root), Bm7 vs Bm7 (0.0), G vs G (0.0)
+        # Raw total: 0.5
+        # Path length: 4 + 4 = 8
+        # Normalized: 0.5 / 8 = 0.0625
+        assert result == 0.0625
+    
+    def test_mixed_quality_differences(self):
+        """Test DTW with various quality differences."""
+        evaluator = Evaluator()
+        predicted = ["D", "Am", "G7"]
+        ground_truth = ["Dmaj7", "Am7", "G"]
+        
+        result = evaluator.calculate_dtw_distance(predicted, ground_truth)
+        
+        # D vs Dmaj7 (0.5 - same root), Am vs Am7 (0.5 - same root), G7 vs G (0.5 - same root)
+        # Raw total: 1.5
+        # Path length: 3 + 3 = 6
+        # Normalized: 1.5 / 6 = 0.25
+        assert result == 0.25
+    
+    def test_slash_chords_in_dtw(self):
+        """Test DTW with slash chords."""
+        evaluator = Evaluator()
+        predicted = ["D/F#", "A", "G/B"]
+        ground_truth = ["D", "AonC#", "G"]
+        
+        result = evaluator.calculate_dtw_distance(predicted, ground_truth)
+        
+        # D/F# vs D (0.5 - same root D), A vs AonC# (0.5 - same root A), G/B vs G (0.5 - same root G)
+        # Raw total: 1.5
+        # Path length: 3 + 3 = 6
+        # Normalized: 1.5 / 6 = 0.25
+        assert result == 0.25
+    
+    def test_longer_sequence_with_insertions(self):
+        """Test DTW with longer sequence requiring insertions."""
+        evaluator = Evaluator()
+        predicted = ["D", "A", "Bm7", "G", "D"]
+        ground_truth = ["D", "A", "G"]
+        
+        result = evaluator.calculate_dtw_distance(predicted, ground_truth)
+        
+        # DTW should find optimal alignment
+        # One possible path: D->D (0.0), A->A (0.0), Bm7->A (1.0), G->G (0.0), D->G (1.0)
+        # But DTW will find the optimal path which might be different
+        # The key is that it handles different lengths
+        assert result >= 0.0  # Just verify it's non-negative
+    
+    def test_dtw_is_non_negative(self):
+        """Test that DTW distance is always non-negative."""
+        evaluator = Evaluator()
+        predicted = ["D", "A", "Bm7", "G", "C", "F"]
+        ground_truth = ["C", "F", "Em", "Am", "D", "G"]
+        
+        result = evaluator.calculate_dtw_distance(predicted, ground_truth)
+        
+        assert result >= 0.0
+    
+    def test_dtw_symmetry_not_required(self):
+        """Test that DTW is not necessarily symmetric (due to alignment)."""
+        evaluator = Evaluator()
+        predicted = ["D", "A", "G"]
+        ground_truth = ["D", "A"]
+        
+        result1 = evaluator.calculate_dtw_distance(predicted, ground_truth)
+        result2 = evaluator.calculate_dtw_distance(ground_truth, predicted)
+        
+        # Both should be non-negative
+        assert result1 >= 0.0
+        assert result2 >= 0.0
+        # They should be equal due to the symmetric nature of DTW
+        assert result1 == result2
+
+
+
+class TestEvaluate:
+    """Tests for the main evaluate method."""
+    
+    def test_perfect_match_all_metrics_perfect(self):
+        """Test that perfect match returns all metrics as 1.0 and DTW as 0.0."""
+        evaluator = Evaluator()
+        predicted = ["D", "A", "Bm7", "G"]
+        ground_truth = ["D", "A", "Bm7", "G"]
+        
+        metrics = evaluator.evaluate(predicted, ground_truth)
+        
+        assert metrics.sequence_accuracy == 1.0
+        assert metrics.root_accuracy == 1.0
+        assert metrics.quality_accuracy == 1.0
+        assert metrics.dtw_distance == 0.0
+        assert metrics.exact_match_rate == 1.0
+    
+    def test_partial_match_mixed_metrics(self):
+        """Test that partial match returns appropriate metric values."""
+        evaluator = Evaluator()
+        predicted = ["D", "A", "Bm7", "G"]
+        ground_truth = ["D", "AonC#", "Bm7", "G"]
+        
+        metrics = evaluator.evaluate(predicted, ground_truth)
+        
+        # Sequence doesn't match exactly
+        assert metrics.sequence_accuracy == 0.0
+        # All roots match (D, A, B, G)
+        assert metrics.root_accuracy == 1.0
+        # All qualities match (major, major, minor_seventh, major)
+        assert metrics.quality_accuracy == 1.0
+        # DTW distance: 0.5 / 8 = 0.0625 (one chord has same root different quality)
+        assert metrics.dtw_distance == 0.0625
+        # 3 out of 4 chords match exactly
+        assert metrics.exact_match_rate == 0.75
+    
+    def test_no_match_zero_metrics(self):
+        """Test that no match returns zero for most metrics."""
+        evaluator = Evaluator()
+        predicted = ["D", "A", "Bm7", "G"]
+        ground_truth = ["C", "F", "Em", "Am"]
+        
+        metrics = evaluator.evaluate(predicted, ground_truth)
+        
+        assert metrics.sequence_accuracy == 0.0
+        assert metrics.root_accuracy == 0.0
+        # Quality accuracy: Bm7 (minor_seventh) vs Em (minor) = no match, but G (major) vs Am (minor) = no match
+        # Actually: D (major) vs C (major) = match, A (major) vs F (major) = match, Bm7 (minor_seventh) vs Em (minor) = no match, G (major) vs Am (minor) = no match
+        # So 2 out of 4 = 0.5
+        assert metrics.quality_accuracy == 0.5
+        # DTW distance should be positive (all different)
+        assert metrics.dtw_distance > 0.0
+        assert metrics.exact_match_rate == 0.0
+    
+    def test_same_root_different_quality(self):
+        """Test metrics when roots match but qualities differ."""
+        evaluator = Evaluator()
+        predicted = ["D", "Am", "G7"]
+        ground_truth = ["Dmaj7", "Am7", "G"]
+        
+        metrics = evaluator.evaluate(predicted, ground_truth)
+        
+        # Sequence doesn't match exactly
+        assert metrics.sequence_accuracy == 0.0
+        # All roots match
+        assert metrics.root_accuracy == 1.0
+        # No qualities match (major vs major_seventh, minor vs minor_seventh, seventh vs major)
+        assert metrics.quality_accuracy == 0.0
+        # DTW distance: 1.5 / 6 = 0.25 (all same root, different quality)
+        assert metrics.dtw_distance == 0.25
+        # No exact matches
+        assert metrics.exact_match_rate == 0.0
+    
+    def test_empty_sequences(self):
+        """Test that empty sequences return appropriate values."""
+        evaluator = Evaluator()
+        predicted = []
+        ground_truth = []
+        
+        metrics = evaluator.evaluate(predicted, ground_truth)
+        
+        # Empty sequences match exactly
+        assert metrics.sequence_accuracy == 1.0
+        # But other metrics return 0.0 for empty sequences
+        assert metrics.root_accuracy == 0.0
+        assert metrics.quality_accuracy == 0.0
+        assert metrics.dtw_distance == 0.0
+        assert metrics.exact_match_rate == 0.0
+    
+    def test_single_chord_match(self):
+        """Test evaluation with single matching chord."""
+        evaluator = Evaluator()
+        predicted = ["D"]
+        ground_truth = ["D"]
+        
+        metrics = evaluator.evaluate(predicted, ground_truth)
+        
+        assert metrics.sequence_accuracy == 1.0
+        assert metrics.root_accuracy == 1.0
+        assert metrics.quality_accuracy == 1.0
+        assert metrics.dtw_distance == 0.0
+        assert metrics.exact_match_rate == 1.0
+    
+    def test_single_chord_mismatch(self):
+        """Test evaluation with single mismatching chord."""
+        evaluator = Evaluator()
+        predicted = ["D"]
+        ground_truth = ["A"]
+        
+        metrics = evaluator.evaluate(predicted, ground_truth)
+        
+        assert metrics.sequence_accuracy == 0.0
+        assert metrics.root_accuracy == 0.0
+        # Both D and A are major quality, so quality matches
+        assert metrics.quality_accuracy == 1.0
+        # DTW distance: 1.0 / 2 = 0.5
+        assert metrics.dtw_distance == 0.5
+        assert metrics.exact_match_rate == 0.0
+    
+    def test_complex_sequence_evaluation(self):
+        """Test evaluation with complex chord sequences."""
+        evaluator = Evaluator()
+        predicted = ["Cmaj7", "AonC#", "Dm7", "G7"]
+        ground_truth = ["Cmaj7", "AonC#", "Dm7", "G7"]
+        
+        metrics = evaluator.evaluate(predicted, ground_truth)
+        
+        assert metrics.sequence_accuracy == 1.0
+        assert metrics.root_accuracy == 1.0
+        assert metrics.quality_accuracy == 1.0
+        assert metrics.dtw_distance == 0.0
+        assert metrics.exact_match_rate == 1.0
+    
+    def test_metrics_object_type(self):
+        """Test that evaluate returns EvaluationMetrics object."""
+        evaluator = Evaluator()
+        predicted = ["D", "A"]
+        ground_truth = ["D", "A"]
+        
+        metrics = evaluator.evaluate(predicted, ground_truth)
+        
+        assert isinstance(metrics, EvaluationMetrics)
+        assert hasattr(metrics, 'sequence_accuracy')
+        assert hasattr(metrics, 'root_accuracy')
+        assert hasattr(metrics, 'quality_accuracy')
+        assert hasattr(metrics, 'dtw_distance')
+        assert hasattr(metrics, 'exact_match_rate')
+    
+    def test_different_length_sequences(self):
+        """Test evaluation with sequences of different lengths."""
+        evaluator = Evaluator()
+        predicted = ["D", "A", "Bm7"]
+        ground_truth = ["D", "A", "Bm7", "G"]
+        
+        # With alignment enabled (default), sequences are aligned before evaluation
+        metrics = evaluator.evaluate(predicted, ground_truth)
+        
+        # Sequence accuracy is 0.0 because aligned sequences don't match exactly
+        assert metrics.sequence_accuracy == 0.0
+        # Root accuracy should be high since D->D, A->A, Bm7->Bm7 match
+        assert metrics.root_accuracy > 0.5
+        assert metrics.quality_accuracy > 0.5
+        # DTW can handle different lengths
+        assert metrics.dtw_distance > 0.0
+        assert metrics.exact_match_rate > 0.5
+        
+        # Without alignment, most metrics return 0.0 for different length sequences
+        metrics_no_align = evaluator.evaluate(predicted, ground_truth, align_sequences=False)
+        assert metrics_no_align.sequence_accuracy == 0.0
+        assert metrics_no_align.root_accuracy == 0.0
+        assert metrics_no_align.quality_accuracy == 0.0
+        assert metrics_no_align.exact_match_rate == 0.0
+
