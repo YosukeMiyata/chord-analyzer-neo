@@ -5,7 +5,7 @@ import tomli
 import tomli_w
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-from src.models import ModelConfig
+from models import ModelConfig
 
 
 class ModelConfigurationModule:
@@ -244,8 +244,8 @@ class ModelConfigurationModule:
         false_negatives = 0
         
         # Import here to avoid circular dependency
-        from src.audio_engine import AudioProcessingEngine
-        from src.chord_estimation import ChordEstimationModule
+        from audio_engine import AudioProcessingEngine
+        from chord_estimation import ChordEstimationModule
         
         # Get model config
         model_config = self._models[model_id]

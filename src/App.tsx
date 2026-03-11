@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { open } from '@tauri-apps/plugin-dialog'
 import { invoke } from '@tauri-apps/api/core'
+import { convertFileSrc } from '@tauri-apps/api/core'
+import { open } from '@tauri-apps/plugin-dialog'
 import FileSelector from './components/FileSelector'
 import AudioControls from './components/AudioControls'
 import ChordVisualization from './components/ChordVisualization'
@@ -44,20 +45,32 @@ function App() {
   const [selectedModel, setSelectedModel] = useState<string>('default')
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null)
 
-  const handleFileSelect = async () => {
-    const selected = await open({
-      multiple: false,
-      filters: [{
-        name: 'Audio',
-        extensions: ['mp3', 'wav', 'flac', 'ogg', 'm4a']
-      }]
-    })
-
-    if (selected && typeof selected === 'string') {
-      setAudioFile(selected)
+  const handleFileSelect = async (filepath: string) => {
+    if (filepath) {
+      setAudioFile(filepath)
       setError(null)
-      await analyzeAudio(selected)
+      
+      // Create audio element for playback using Tauri's convertFileSrc
+      const audioSrc = convertFileSrc(filepath)
+      console.log('Audio source:', audioSrc)
+      const audio = new Audio(audioSrc)
+      audio.volume = volume
+      audio.addEventListener('timeupdate', () => {
+        setCurrentPosition(audio.currentTime)
+      })
+      audio.addEventListener('ended', () => {
+        setIsPlaying(false)
+        setCurrentPosition(0)
+      })
+      audio.addEventListener('error', (e) => {
+        console.error('Audio element error:', e)
+        setError('音声ファイルの読み込みエラー')
+      })
+      setAudioElement(audio)
+      
+      await analyzeAudio(filepath)
     }
   }
 
@@ -70,7 +83,14 @@ function App() {
         modelId: selectedModel,
         useCache: true
       })
-      setAnalysisResult(result)
+      
+      // Merge consecutive identical chords
+      const mergedChords = mergeConsecutiveChords(result.chord_progression)
+      
+      setAnalysisResult({
+        ...result,
+        chord_progression: mergedChords
+      })
     } catch (err) {
       console.error('Analysis failed:', err)
       setError(err as string)
@@ -79,22 +99,63 @@ function App() {
     }
   }
 
+  // Helper function to merge consecutive identical chords
+  const mergeConsecutiveChords = (chords: ChordSegment[]): ChordSegment[] => {
+    if (chords.length === 0) return chords
+    
+    const merged: ChordSegment[] = []
+    let current = { ...chords[0] }
+    
+    for (let i = 1; i < chords.length; i++) {
+      const chord = chords[i]
+      
+      // Check if chord is identical to current (same root, quality, bass, extensions)
+      const isSame = 
+        chord.root === current.root &&
+        chord.quality === current.quality &&
+        chord.bass_note === current.bass_note &&
+        JSON.stringify(chord.extensions) === JSON.stringify(current.extensions)
+      
+      if (isSame) {
+        // Extend the current chord's end time
+        current.end_time = chord.end_time
+        // Average the confidence
+        current.confidence = (current.confidence + chord.confidence) / 2
+      } else {
+        // Push the current chord and start a new one
+        merged.push(current)
+        current = { ...chord }
+      }
+    }
+    
+    // Push the last chord
+    merged.push(current)
+    
+    return merged
+  }
+
   const handlePlayPause = async () => {
+    if (!audioElement) return
+    
     try {
       if (isPlaying) {
-        await invoke('pause_audio')
+        audioElement.pause()
       } else {
-        await invoke('play_audio')
+        await audioElement.play()
       }
       setIsPlaying(!isPlaying)
     } catch (err) {
       console.error('Playback error:', err)
+      setError('音声再生エラー: ' + err)
     }
   }
 
   const handleStop = async () => {
+    if (!audioElement) return
+    
     try {
-      await invoke('stop_audio')
+      audioElement.pause()
+      audioElement.currentTime = 0
       setIsPlaying(false)
       setCurrentPosition(0)
     } catch (err) {
@@ -103,8 +164,10 @@ function App() {
   }
 
   const handleSeek = async (position: number) => {
+    if (!audioElement) return
+    
     try {
-      await invoke('seek_audio', { position })
+      audioElement.currentTime = position
       setCurrentPosition(position)
     } catch (err) {
       console.error('Seek error:', err)
@@ -112,8 +175,10 @@ function App() {
   }
 
   const handleVolumeChange = async (newVolume: number) => {
+    if (!audioElement) return
+    
     try {
-      await invoke('set_volume', { volume: newVolume })
+      audioElement.volume = newVolume
       setVolume(newVolume)
     } catch (err) {
       console.error('Volume error:', err)
@@ -170,7 +235,25 @@ function App() {
           <>
             <div className="file-info">
               <span className="file-name">{audioFile.split('/').pop()}</span>
-              <button onClick={handleFileSelect} className="btn-secondary">
+              <button onClick={async () => {
+                console.log('Change file button clicked')
+                try {
+                  const selected = await open({
+                    multiple: false,
+                    filters: [{
+                      name: 'Audio',
+                      extensions: ['mp3', 'wav', 'flac', 'ogg', 'm4a']
+                    }]
+                  })
+                  console.log('Selected file:', selected)
+                  if (selected && typeof selected === 'string') {
+                    handleFileSelect(selected)
+                  }
+                } catch (err) {
+                  console.error('File selection error:', err)
+                  alert('ファイル選択エラー: ' + err)
+                }
+              }} className="btn-secondary">
                 別のファイルを選択
               </button>
             </div>
@@ -203,6 +286,7 @@ function App() {
                   chords={analysisResult.chord_progression}
                   currentPosition={currentPosition}
                   onChordClick={setSelectedChord}
+                  tempo={analysisResult.tempo}
                 />
 
                 <LyricsDisplay

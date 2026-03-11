@@ -1,0 +1,13 @@
+active_model = "default_hmm"
+
+[[models]]
+model_id = "default_hmm"
+model_name = "Default HMM Model"
+model_path = "builtin"
+model_type = "hmm"
+description = "Built-in HMM-based chord estimation model"
+is_default = true
+
+[models.accuracy_metrics]
+accuracy = 0.75
+f1_score = 0.72

@@ -5,7 +5,7 @@ import numpy as np
 from typing import List, Tuple, Optional
 import logging
 
-from src.models import LyricSegment, ChordSegment
+from models import LyricSegment, ChordSegment
 
 logger = logging.getLogger(__name__)
 
@@ -74,18 +74,41 @@ class LyricsTranscriptionModule:
                 verbose=False
             )
             
+            logger.info(f"Whisper transcription result: {result.get('text', 'No text')}")
+            logger.info(f"Number of segments: {len(result.get('segments', []))}")
+            
             # Extract lyric segments
             lyric_segments = []
             
             if 'segments' in result:
                 for segment in result['segments']:
+                    # DEBUG: Log raw Whisper output before any processing
+                    raw_text = segment['text']
+                    logger.debug(f"[DEBUG] Raw Whisper output: {repr(raw_text)} (bytes: {raw_text.encode('utf-8')})")
+                    
+                    # Apply strip operation
+                    text = raw_text.strip()
+                    
+                    # DEBUG: Log text after strip operation
+                    logger.debug(f"[DEBUG] After strip(): {repr(text)} (bytes: {text.encode('utf-8')})")
+                    
+                    logger.info(f"Segment: {text} ({segment['start']:.2f}s - {segment['end']:.2f}s)")
+                    
                     # Create lyric segment
+                    # no_speech_prob is the probability of no speech, so confidence is 1 - no_speech_prob
+                    no_speech_prob = segment.get('no_speech_prob', 0.0)
+                    confidence = 1.0 - no_speech_prob
+                    
                     lyric_segment = LyricSegment(
                         start_time=segment['start'],
                         end_time=segment['end'],
-                        text=segment['text'].strip(),
-                        confidence=segment.get('no_speech_prob', 0.0)
+                        text=text,
+                        confidence=confidence
                     )
+                    
+                    # DEBUG: Log final LyricSegment text value
+                    logger.debug(f"[DEBUG] Final LyricSegment text: {repr(lyric_segment.text)} (bytes: {lyric_segment.text.encode('utf-8')})")
+                    
                     lyric_segments.append(lyric_segment)
             
             logger.info(f"Transcription completed: {len(lyric_segments)} segments")

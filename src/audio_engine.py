@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Optional, Tuple
 import logging
 
-from src.models import AudioAnalysisResult
-from src.cache_manager import CacheManager
+from models import AudioAnalysisResult
+from cache_manager import CacheManager
 
 logger = logging.getLogger(__name__)
 
@@ -183,8 +183,8 @@ class AudioProcessingEngine:
             audio_mono = librosa.to_mono(self.audio_data)
 
         # Import analysis modules
-        from src.chord_estimation import ChordEstimationModule
-        from src.lyrics_transcription import LyricsTranscriptionModule
+        from chord_estimation import ChordEstimationModule
+        from lyrics_transcription import LyricsTranscriptionModule
 
         # Step 1: Chord estimation
         logger.info("Step 1/5: Estimating chords")
@@ -213,8 +213,11 @@ class AudioProcessingEngine:
         # Step 3: Tempo detection
         logger.info("Step 3/5: Detecting tempo")
         tempo, _ = librosa.beat.beat_track(y=audio_mono, sr=self.sample_rate)
-        # tempo is returned as numpy scalar, convert to float
-        tempo = float(tempo)
+        # tempo might be returned as numpy array, convert to float
+        if isinstance(tempo, np.ndarray):
+            tempo = float(tempo[0]) if len(tempo) > 0 else 120.0
+        else:
+            tempo = float(tempo)
         logger.info(f"Tempo detected: {tempo:.2f} BPM")
 
         # Step 4: Key detection

@@ -1,8 +1,34 @@
+import { open } from '@tauri-apps/plugin-dialog'
+
 interface FileSelectorProps {
-  onFileSelect: () => void
+  onFileSelect: (filepath: string) => void
 }
 
 function FileSelector({ onFileSelect }: FileSelectorProps) {
+  const handleButtonClick = async () => {
+    console.log('File selection button clicked')
+    try {
+      const selected = await open({
+        multiple: false,
+        filters: [{
+          name: 'Audio',
+          extensions: ['mp3', 'wav', 'flac', 'ogg', 'm4a']
+        }]
+      })
+      
+      console.log('Selected file:', selected)
+      
+      if (selected && typeof selected === 'string') {
+        onFileSelect(selected)
+      } else if (selected === null) {
+        console.log('User cancelled file selection')
+      }
+    } catch (err) {
+      console.error('File selection error:', err)
+      alert('ファイル選択エラー: ' + err)
+    }
+  }
+
   return (
     <div className="file-selector">
       <div className="file-selector-content">
@@ -21,7 +47,7 @@ function FileSelector({ onFileSelect }: FileSelectorProps) {
         </svg>
         <h2>音声ファイルを選択</h2>
         <p>MP3, WAV, FLAC, OGG, M4A形式に対応</p>
-        <button onClick={onFileSelect} className="btn-primary">
+        <button onClick={handleButtonClick} className="btn-primary">
           ファイルを選択
         </button>
       </div>

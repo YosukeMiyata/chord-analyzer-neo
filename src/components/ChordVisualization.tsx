@@ -12,9 +12,10 @@ interface ChordVisualizationProps {
   chords: ChordSegment[]
   currentPosition: number
   onChordClick: (chord: ChordSegment) => void
+  tempo?: number // BPM, defaults to 120
 }
 
-function ChordVisualization({ chords, currentPosition, onChordClick }: ChordVisualizationProps) {
+function ChordVisualization({ chords, currentPosition, onChordClick, tempo = 120 }: ChordVisualizationProps) {
   const BARS_PER_LINE = 16
   const BEATS_PER_BAR = 4 // Assuming 4/4 time signature for now
 
@@ -43,9 +44,13 @@ function ChordVisualization({ chords, currentPosition, onChordClick }: ChordVisu
     let currentLine: ChordSegment[] = []
     let barCount = 0
 
+    // Calculate seconds per bar based on tempo
+    const secondsPerBeat = 60 / tempo
+    const secondsPerBar = secondsPerBeat * BEATS_PER_BAR
+
     chords.forEach((chord) => {
       const chordDuration = chord.end_time - chord.start_time
-      const barsInChord = Math.ceil(chordDuration / BEATS_PER_BAR)
+      const barsInChord = Math.ceil(chordDuration / secondsPerBar)
 
       if (barCount + barsInChord > BARS_PER_LINE && currentLine.length > 0) {
         lines.push(currentLine)

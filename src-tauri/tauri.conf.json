@@ -9,34 +9,46 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "title": "Chord Analyzer Neo",
         "width": 1200,
         "height": 800,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "decorations": true,
+        "transparent": false
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      },
+      "capabilities": [
+        {
+          "identifier": "main-capability",
+          "description": "Main application capabilities",
+          "windows": ["main"],
+          "permissions": [
+            "dialog:allow-open",
+            "dialog:allow-save",
+            "dialog:allow-message",
+            "dialog:allow-ask",
+            "dialog:allow-confirm",
+            "core:default",
+            "core:path:default",
+            "core:event:default"
+          ]
+        }
+      ]
     }
   },
   "bundle": {
-    "active": true,
+    "active": false,
     "targets": "all"
   },
-  "plugins": {
-    "dialog": {
-      "all": true,
-      "open": true,
-      "save": true
-    },
-    "fs": {
-      "scope": ["$AUDIO/*", "$CACHE/*", "$CORRECTIONS/*"]
-    },
-    "opener": {
-      "all": true
-    }
-  }
+  "plugins": {}
 }

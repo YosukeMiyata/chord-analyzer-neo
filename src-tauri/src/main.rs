@@ -2,9 +2,37 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
 use tauri::State;
+
+// Helper function to get Python executable path
+fn get_python_executable() -> Result<String, String> {
+    let project_root = std::env::current_dir()
+        .map_err(|e| format!("Failed to get current directory: {}", e))?
+        .parent()
+        .ok_or("Failed to get parent directory")?
+        .to_path_buf();
+    
+    let venv_python = project_root.join("venv/bin/python");
+    if venv_python.exists() {
+        Ok(venv_python.to_str().unwrap().to_string())
+    } else {
+        Ok("python3".to_string())
+    }
+}
+
+// Helper function to get project root and src path
+fn get_project_paths() -> Result<(PathBuf, PathBuf), String> {
+    let project_root = std::env::current_dir()
+        .map_err(|e| format!("Failed to get current directory: {}", e))?
+        .parent()
+        .ok_or("Failed to get parent directory")?
+        .to_path_buf();
+    let src_path = project_root.join("src");
+    Ok((project_root, src_path))
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ChordSegment {
@@ -57,14 +85,20 @@ async fn analyze_audio(
     _model_id: String,
     use_cache: bool,
 ) -> Result<AnalysisResult, String> {
+    let python_executable = get_python_executable()?;
+    let (_project_root, src_path) = get_project_paths()?;
+    
+    // Convert Rust bool to Python bool string
+    let use_cache_str = if use_cache { "True" } else { "False" };
+    
     // Call Python backend to analyze audio
-    let output = Command::new("python3")
+    let output = Command::new(python_executable)
         .arg("-c")
         .arg(format!(
             r#"
 import sys
 import json
-sys.path.insert(0, 'src')
+sys.path.insert(0, '{}')
 from audio_engine import AudioProcessingEngine
 from pathlib import Path
 
@@ -97,9 +131,9 @@ output = {{
     'key': result.key,
     'time_signature': result.time_signature
 }}
-print(json.dumps(output))
+print(json.dumps(output, ensure_ascii=False))
 "#,
-            filepath, use_cache
+            src_path.display(), filepath, use_cache_str
         ))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -117,12 +151,15 @@ print(json.dumps(output))
 
 #[tauri::command]
 async fn list_models() -> Result<Vec<ModelConfig>, String> {
-    let output = Command::new("python3")
+    let python_executable = get_python_executable()?;
+    let (_project_root, src_path) = get_project_paths()?;
+    
+    let output = Command::new(python_executable)
         .arg("-c")
-        .arg(r#"
+        .arg(format!(r#"
 import sys
 import json
-sys.path.insert(0, 'src')
+sys.path.insert(0, '{}')
 from model_configuration import ModelConfigurationModule
 from pathlib import Path
 
@@ -130,7 +167,7 @@ module = ModelConfigurationModule(Path('./models'))
 models = module.list_available_models()
 
 output = [
-    {
+    {{
         'model_id': m.model_id,
         'model_name': m.model_name,
         'model_path': str(m.model_path),
@@ -138,10 +175,10 @@ output = [
         'description': m.description,
         'accuracy_metrics': m.accuracy_metrics,
         'is_default': m.is_default
-    } for m in models
+    }} for m in models
 ]
 print(json.dumps(output))
-"#)
+"#, src_path.display()))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
@@ -163,18 +200,21 @@ async fn save_chord_correction(
     original_chord: ChordSegment,
     corrected_chord: ChordSegment,
 ) -> Result<(), String> {
+    let python_executable = get_python_executable()?;
+    let (_project_root, src_path) = get_project_paths()?;
+    
     let original_json = serde_json::to_string(&original_chord)
         .map_err(|e| format!("Failed to serialize original chord: {}", e))?;
     let corrected_json = serde_json::to_string(&corrected_chord)
         .map_err(|e| format!("Failed to serialize corrected chord: {}", e))?;
 
-    let output = Command::new("python3")
+    let output = Command::new(python_executable)
         .arg("-c")
         .arg(format!(
             r#"
 import sys
 import json
-sys.path.insert(0, 'src')
+sys.path.insert(0, '{}')
 from chord_correction import ChordCorrectionModule
 from models import ChordSegment, ChordQuality
 from pathlib import Path
@@ -209,6 +249,7 @@ corrected = ChordSegment(
 module.save_correction(Path('{}'), {}, original, corrected)
 print('success')
 "#,
+            src_path.display(),
             original_json.replace('\'', "\\'"),
             corrected_json.replace('\'', "\\'"),
             filepath,
@@ -278,8 +319,10 @@ fn get_current_position(state: State<AudioEngineState>) -> Result<f64, String> {
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_opener::init())
+        .setup(|_app| {
+            // Initialize plugins in setup
+            Ok(())
+        })
         .manage(AudioEngineState {
             is_playing: Mutex::new(false),
             current_position: Mutex::new(0.0),
