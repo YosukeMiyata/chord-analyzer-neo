@@ -453,6 +453,11 @@ class ChordNormalizer:
         """
         # Step 1: Strip whitespace from input
         chord = chord.strip()
+        
+        # Step 1.5: Convert full-width characters to half-width
+        # Replace full-width sharp (♯) with half-width (#)
+        # Replace full-width flat (♭) with half-width (b)
+        chord = chord.replace('♯', '#').replace('♭', 'b')
 
         # Step 2: Validate input
         if not chord:

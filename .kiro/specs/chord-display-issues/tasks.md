@@ -204,27 +204,27 @@
     - Verify end-to-end chord detection works for all chord types
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
 
-  - [ ] 6.2 Test full lyrics pipeline
+  - [x] 6.2 Test full lyrics pipeline
     - Load audio → transcribe → display Japanese text correctly
     - Verify end-to-end lyrics transcription preserves UTF-8
     - _Requirements: 2.7_
 
-  - [ ] 6.3 Test synchronized playback
+  - [x] 6.3 Test synchronized playback
     - Play audio → verify chords highlight at correct times → verify lyrics display at correct times
     - Verify time-based synchronization works correctly
     - _Requirements: 3.3, 3.4, 3.5_
 
-  - [ ] 6.4 Test chord layout with real song
+  - [x] 6.4 Test chord layout with real song
     - Analyze full song → verify all lines have 16 bars → verify visual layout matches specification
     - Test with different tempos (60, 120, 180 BPM)
     - _Requirements: 2.6_
 
-  - [ ] 6.5 Test mixed content
+  - [x] 6.5 Test mixed content
     - Song with major, minor, 7th, sus4, and slash chords → verify all are detected and displayed correctly
     - Verify no regressions in major chord detection
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 3.1_
 
-- [ ] 7. Checkpoint - Ensure all tests pass
+- [x] 7. Checkpoint - Ensure all tests pass
   - Verify all exploration tests pass (chord quality, layout, lyrics)
   - Verify all preservation tests pass (major chords, UI, audio processing)
   - Verify all integration tests pass
