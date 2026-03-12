@@ -330,13 +330,16 @@ class TestBenchmarkToolPathValidation:
 class TestBenchmarkToolNotImplemented:
     """Test that unimplemented methods raise NotImplementedError."""
     
-    def test_generate_report_not_implemented(self, tmp_path):
-        """Test that generate_report raises NotImplementedError."""
+    def test_generate_report_json_implemented(self, tmp_path):
+        """Test that generate_report with JSON format is now implemented."""
         tool = BenchmarkTool()
         output_path = tmp_path / "report.json"
         
-        with pytest.raises(NotImplementedError):
-            tool.generate_report([], output_path)
+        # JSON format should work (no longer raises NotImplementedError)
+        tool.generate_report([], output_path, format='json')
+        
+        # Verify file was created
+        assert output_path.exists()
 class TestBenchmarkToolSingleSongProcessing:
     """Test single song processing functionality.
 
@@ -1594,3 +1597,733 @@ class TestBenchmarkToolAggregateMetrics:
         # Calculate expected std for sequence_accuracy
         expected_std = statistics.stdev([0.6, 0.8])
         assert abs(aggregates["sequence_accuracy_std"] - expected_std) < 0.001
+
+
+
+class TestBenchmarkToolReportGeneration:
+    """Test report generation functionality.
+    
+    Validates: Requirements 7.1, 7.3, 7.4, 7.5
+    """
+    
+    def test_generate_json_report_success(self, tmp_path):
+        """Test successful JSON report generation.
+        
+        Validates: Requirements 7.1, 7.3, 7.4, 7.5
+        """
+        import json
+        from src.evaluation.models import BenchmarkResult, EvaluationMetrics
+        
+        # Create test results
+        results = [
+            BenchmarkResult(
+                song_name="song1",
+                metrics=EvaluationMetrics(
+                    sequence_accuracy=1.0,
+                    root_accuracy=1.0,
+                    quality_accuracy=1.0,
+                    dtw_distance=0.0,
+                    exact_match_rate=1.0
+                ),
+                predicted_chords=["D", "A", "Bm7", "G"],
+                ground_truth_chords=["D", "A", "Bm7", "G"],
+                processing_time=1.5
+            ),
+            BenchmarkResult(
+                song_name="song2",
+                metrics=EvaluationMetrics(
+                    sequence_accuracy=0.5,
+                    root_accuracy=0.8,
+                    quality_accuracy=0.6,
+                    dtw_distance=0.3,
+                    exact_match_rate=0.5
+                ),
+                predicted_chords=["C", "G", "Am", "F"],
+                ground_truth_chords=["D", "A", "Bm7", "G"],
+                processing_time=2.0
+            )
+        ]
+        
+        # Generate report
+        output_path = tmp_path / "report.json"
+        tool = BenchmarkTool()
+        tool.generate_report(results, output_path, format='json')
+        
+        # Verify file was created
+        assert output_path.exists()
+        
+        # Read and parse JSON
+        with open(output_path, 'r', encoding='utf-8') as f:
+            report = json.load(f)
+        
+        # Verify report structure
+        assert 'summary' in report
+        assert 'detailed_results' in report
+        
+        # Verify summary
+        assert report['summary']['total_songs'] == 2
+        assert 'aggregate_statistics' in report['summary']
+        
+        # Verify aggregate statistics are present
+        agg_stats = report['summary']['aggregate_statistics']
+        assert 'sequence_accuracy_mean' in agg_stats
+        assert 'root_accuracy_mean' in agg_stats
+        assert 'quality_accuracy_mean' in agg_stats
+        assert 'dtw_distance_mean' in agg_stats
+        assert 'exact_match_rate_mean' in agg_stats
+        
+        # Verify detailed results
+        assert len(report['detailed_results']) == 2
+        
+        # Verify first song details
+        song1 = report['detailed_results'][0]
+        assert song1['song_name'] == 'song1'
+        assert song1['metrics']['sequence_accuracy'] == 1.0
+        assert song1['metrics']['root_accuracy'] == 1.0
+        assert song1['predicted_chords'] == ["D", "A", "Bm7", "G"]
+        assert song1['ground_truth_chords'] == ["D", "A", "Bm7", "G"]
+        assert song1['processing_time'] == 1.5
+        
+        # Verify second song details
+        song2 = report['detailed_results'][1]
+        assert song2['song_name'] == 'song2'
+        assert song2['metrics']['sequence_accuracy'] == 0.5
+        assert song2['predicted_chords'] == ["C", "G", "Am", "F"]
+        assert song2['ground_truth_chords'] == ["D", "A", "Bm7", "G"]
+        assert song2['processing_time'] == 2.0
+    
+    def test_generate_json_report_with_empty_results(self, tmp_path):
+        """Test JSON report generation with empty results list.
+        
+        Validates: Requirements 7.1, 7.5
+        """
+        import json
+        
+        # Generate report with empty results
+        output_path = tmp_path / "empty_report.json"
+        tool = BenchmarkTool()
+        tool.generate_report([], output_path, format='json')
+        
+        # Verify file was created
+        assert output_path.exists()
+        
+        # Read and parse JSON
+        with open(output_path, 'r', encoding='utf-8') as f:
+            report = json.load(f)
+        
+        # Verify report structure
+        assert report['summary']['total_songs'] == 0
+        assert report['summary']['aggregate_statistics'] == {}
+        assert report['detailed_results'] == []
+    
+    def test_generate_json_report_with_single_result(self, tmp_path):
+        """Test JSON report generation with a single result.
+        
+        Validates: Requirements 7.1, 7.3, 7.4, 7.5
+        """
+        import json
+        from src.evaluation.models import BenchmarkResult, EvaluationMetrics
+        
+        # Create single result
+        result = BenchmarkResult(
+            song_name="test_song",
+            metrics=EvaluationMetrics(
+                sequence_accuracy=0.8,
+                root_accuracy=0.9,
+                quality_accuracy=0.85,
+                dtw_distance=0.15,
+                exact_match_rate=0.75
+            ),
+            predicted_chords=["D", "A", "Bm7"],
+            ground_truth_chords=["D", "A", "G"],
+            processing_time=1.2
+        )
+        
+        # Generate report
+        output_path = tmp_path / "single_report.json"
+        tool = BenchmarkTool()
+        tool.generate_report([result], output_path, format='json')
+        
+        # Verify file was created
+        assert output_path.exists()
+        
+        # Read and parse JSON
+        with open(output_path, 'r', encoding='utf-8') as f:
+            report = json.load(f)
+        
+        # Verify summary
+        assert report['summary']['total_songs'] == 1
+        
+        # Verify aggregate statistics (with single result, std should be 0)
+        agg_stats = report['summary']['aggregate_statistics']
+        assert agg_stats['sequence_accuracy_mean'] == 0.8
+        assert agg_stats['sequence_accuracy_std'] == 0.0
+        assert agg_stats['sequence_accuracy_min'] == 0.8
+        assert agg_stats['sequence_accuracy_max'] == 0.8
+        
+        # Verify detailed results
+        assert len(report['detailed_results']) == 1
+        assert report['detailed_results'][0]['song_name'] == 'test_song'
+    
+    def test_generate_json_report_all_metrics_included(self, tmp_path):
+        """Test that all 5 metrics are included in JSON report.
+        
+        Validates: Requirements 7.3, 7.4
+        """
+        import json
+        from src.evaluation.models import BenchmarkResult, EvaluationMetrics
+        
+        # Create result
+        result = BenchmarkResult(
+            song_name="test",
+            metrics=EvaluationMetrics(
+                sequence_accuracy=0.8,
+                root_accuracy=0.9,
+                quality_accuracy=0.85,
+                dtw_distance=0.15,
+                exact_match_rate=0.75
+            ),
+            predicted_chords=["D"],
+            ground_truth_chords=["D"],
+            processing_time=1.0
+        )
+        
+        # Generate report
+        output_path = tmp_path / "metrics_report.json"
+        tool = BenchmarkTool()
+        tool.generate_report([result], output_path, format='json')
+        
+        # Read and parse JSON
+        with open(output_path, 'r', encoding='utf-8') as f:
+            report = json.load(f)
+        
+        # Verify all metrics are in detailed results
+        song_metrics = report['detailed_results'][0]['metrics']
+        assert 'sequence_accuracy' in song_metrics
+        assert 'root_accuracy' in song_metrics
+        assert 'quality_accuracy' in song_metrics
+        assert 'dtw_distance' in song_metrics
+        assert 'exact_match_rate' in song_metrics
+        
+        # Verify all metrics are in aggregate statistics
+        agg_stats = report['summary']['aggregate_statistics']
+        for metric in ['sequence_accuracy', 'root_accuracy', 'quality_accuracy', 
+                       'dtw_distance', 'exact_match_rate']:
+            assert f'{metric}_mean' in agg_stats
+            assert f'{metric}_std' in agg_stats
+            assert f'{metric}_min' in agg_stats
+            assert f'{metric}_max' in agg_stats
+    
+    def test_generate_json_report_with_unicode_song_names(self, tmp_path):
+        """Test JSON report generation with Unicode song names.
+        
+        Validates: Requirements 7.1, 7.5
+        """
+        import json
+        from src.evaluation.models import BenchmarkResult, EvaluationMetrics
+        
+        # Create result with Japanese song name
+        result = BenchmarkResult(
+            song_name="涙があふれる",
+            metrics=EvaluationMetrics(
+                sequence_accuracy=0.8,
+                root_accuracy=0.9,
+                quality_accuracy=0.85,
+                dtw_distance=0.15,
+                exact_match_rate=0.75
+            ),
+            predicted_chords=["D", "A"],
+            ground_truth_chords=["D", "A"],
+            processing_time=1.0
+        )
+        
+        # Generate report
+        output_path = tmp_path / "unicode_report.json"
+        tool = BenchmarkTool()
+        tool.generate_report([result], output_path, format='json')
+        
+        # Read and parse JSON
+        with open(output_path, 'r', encoding='utf-8') as f:
+            report = json.load(f)
+        
+        # Verify Unicode song name is preserved
+        assert report['detailed_results'][0]['song_name'] == "涙があふれる"
+    
+    def test_generate_report_invalid_format(self, tmp_path):
+        """Test that invalid format raises ValueError.
+        
+        Validates: Requirement 7.1
+        """
+        from src.evaluation.models import BenchmarkResult, EvaluationMetrics
+        
+        result = BenchmarkResult(
+            song_name="test",
+            metrics=EvaluationMetrics(
+                sequence_accuracy=0.8,
+                root_accuracy=0.9,
+                quality_accuracy=0.85,
+                dtw_distance=0.15,
+                exact_match_rate=0.75
+            ),
+            predicted_chords=["D"],
+            ground_truth_chords=["D"],
+            processing_time=1.0
+        )
+        
+        output_path = tmp_path / "report.txt"
+        tool = BenchmarkTool()
+        
+        # Should raise ValueError for invalid format
+        with pytest.raises(ValueError, match="Invalid format"):
+            tool.generate_report([result], output_path, format='xml')
+    
+    def test_generate_markdown_report_success(self, tmp_path):
+        """Test successful Markdown report generation.
+        
+        Validates: Requirements 7.2, 7.3, 7.4, 7.5
+        """
+        from src.evaluation.models import BenchmarkResult, EvaluationMetrics
+        
+        result = BenchmarkResult(
+            song_name="test",
+            metrics=EvaluationMetrics(
+                sequence_accuracy=0.8,
+                root_accuracy=0.9,
+                quality_accuracy=0.85,
+                dtw_distance=0.15,
+                exact_match_rate=0.75
+            ),
+            predicted_chords=["D", "A", "Bm7"],
+            ground_truth_chords=["D", "A", "Bm7"],
+            processing_time=1.0
+        )
+        
+        output_path = tmp_path / "report.md"
+        tool = BenchmarkTool()
+        
+        # Generate markdown report
+        tool.generate_report([result], output_path, format='markdown')
+        
+        # Verify file was created
+        assert output_path.exists()
+        
+        # Read and verify content
+        content = output_path.read_text(encoding='utf-8')
+        
+        # Verify title
+        assert "# Chord Recognition Evaluation Report" in content
+        
+        # Verify summary section
+        assert "## Summary" in content
+        assert "**Total Songs Processed:** 1" in content
+        
+        # Verify aggregate statistics table
+        assert "## Aggregate Statistics" in content
+        assert "| Metric | Mean | Std Dev | Min | Max |" in content
+        assert "Sequence Accuracy" in content
+        assert "Root Accuracy" in content
+        assert "Quality Accuracy" in content
+        assert "DTW Distance" in content
+        assert "Exact Match Rate" in content
+        
+        # Verify detailed results section
+        assert "## Detailed Results by Song" in content
+        assert "### 1. test" in content
+        
+        # Verify metrics are displayed
+        assert "80.00%" in content  # sequence_accuracy
+        assert "90.00%" in content  # root_accuracy
+        assert "85.00%" in content  # quality_accuracy
+        assert "0.1500" in content  # dtw_distance
+        assert "75.00%" in content  # exact_match_rate
+        assert "1.00s" in content   # processing_time
+        
+        # Verify chord sequences are displayed
+        assert "**Predicted Chords:**" in content
+        assert "D | A | Bm7" in content
+        assert "**Ground Truth Chords:**" in content
+    
+    def test_generate_json_report_io_error(self, tmp_path):
+        """Test handling of IO errors when writing JSON report.
+        
+        Validates: Requirement 7.5
+        """
+        from src.evaluation.models import BenchmarkResult, EvaluationMetrics
+        
+        result = BenchmarkResult(
+            song_name="test",
+            metrics=EvaluationMetrics(
+                sequence_accuracy=0.8,
+                root_accuracy=0.9,
+                quality_accuracy=0.85,
+                dtw_distance=0.15,
+                exact_match_rate=0.75
+            ),
+            predicted_chords=["D"],
+            ground_truth_chords=["D"],
+            processing_time=1.0
+        )
+        
+        # Try to write to a directory (should fail)
+        output_path = tmp_path / "subdir"
+        output_path.mkdir()
+        
+        tool = BenchmarkTool()
+        
+        # Should raise IOError when trying to write to a directory
+        with pytest.raises(IOError):
+            tool.generate_report([result], output_path, format='json')
+    
+    def test_generate_json_report_preserves_chord_sequences(self, tmp_path):
+        """Test that predicted and ground truth chord sequences are preserved in report.
+        
+        Validates: Requirements 7.4
+        """
+        import json
+        from src.evaluation.models import BenchmarkResult, EvaluationMetrics
+        
+        # Create result with specific chord sequences
+        predicted = ["D", "A", "Bm7", "G", "D", "A"]
+        ground_truth = ["D", "AonC#", "Bm7", "G", "D", "A"]
+        
+        result = BenchmarkResult(
+            song_name="test_song",
+            metrics=EvaluationMetrics(
+                sequence_accuracy=0.8,
+                root_accuracy=0.9,
+                quality_accuracy=0.85,
+                dtw_distance=0.15,
+                exact_match_rate=0.75
+            ),
+            predicted_chords=predicted,
+            ground_truth_chords=ground_truth,
+            processing_time=1.5
+        )
+        
+        # Generate report
+        output_path = tmp_path / "chords_report.json"
+        tool = BenchmarkTool()
+        tool.generate_report([result], output_path, format='json')
+        
+        # Read and parse JSON
+        with open(output_path, 'r', encoding='utf-8') as f:
+            report = json.load(f)
+        
+        # Verify chord sequences are preserved exactly
+        song_data = report['detailed_results'][0]
+        assert song_data['predicted_chords'] == predicted
+        assert song_data['ground_truth_chords'] == ground_truth
+    
+    def test_generate_json_report_processing_time_included(self, tmp_path):
+        """Test that processing time is included in JSON report.
+        
+        Validates: Requirement 7.4
+        """
+        import json
+        from src.evaluation.models import BenchmarkResult, EvaluationMetrics
+        
+        # Create result with specific processing time
+        result = BenchmarkResult(
+            song_name="test_song",
+            metrics=EvaluationMetrics(
+                sequence_accuracy=0.8,
+                root_accuracy=0.9,
+                quality_accuracy=0.85,
+                dtw_distance=0.15,
+                exact_match_rate=0.75
+            ),
+            predicted_chords=["D", "A"],
+            ground_truth_chords=["D", "A"],
+            processing_time=2.5
+        )
+        
+        # Generate report
+        output_path = tmp_path / "time_report.json"
+        tool = BenchmarkTool()
+        tool.generate_report([result], output_path, format='json')
+        
+        # Read and parse JSON
+        with open(output_path, 'r', encoding='utf-8') as f:
+            report = json.load(f)
+        
+        # Verify processing time is included
+        song_data = report['detailed_results'][0]
+        assert 'processing_time' in song_data
+        assert song_data['processing_time'] == 2.5
+
+
+class TestMarkdownReportGeneration:
+    """Test Markdown report generation functionality.
+    
+    Validates: Requirements 7.2, 7.3, 7.4, 7.5
+    """
+    
+    def test_generate_markdown_report_empty_results(self, tmp_path):
+        """Test markdown report generation with empty results list.
+        
+        Validates: Requirement 7.2
+        """
+        output_path = tmp_path / "empty_report.md"
+        tool = BenchmarkTool()
+        
+        # Generate report with empty results
+        tool.generate_report([], output_path, format='markdown')
+        
+        # Verify file was created
+        assert output_path.exists()
+        
+        # Read and verify content
+        content = output_path.read_text(encoding='utf-8')
+        
+        # Verify basic structure
+        assert "# Chord Recognition Evaluation Report" in content
+        assert "## Summary" in content
+        assert "**Total Songs Processed:** 0" in content
+        assert "*No results to display.*" in content
+    
+    def test_generate_markdown_report_single_song(self, tmp_path):
+        """Test markdown report generation with a single song.
+        
+        Validates: Requirements 7.2, 7.3, 7.4
+        """
+        from src.evaluation.models import BenchmarkResult, EvaluationMetrics
+        
+        result = BenchmarkResult(
+            song_name="test_song",
+            metrics=EvaluationMetrics(
+                sequence_accuracy=1.0,
+                root_accuracy=1.0,
+                quality_accuracy=1.0,
+                dtw_distance=0.0,
+                exact_match_rate=1.0
+            ),
+            predicted_chords=["D", "A", "Bm7", "G"],
+            ground_truth_chords=["D", "A", "Bm7", "G"],
+            processing_time=2.5
+        )
+        
+        output_path = tmp_path / "single_song_report.md"
+        tool = BenchmarkTool()
+        
+        # Generate report
+        tool.generate_report([result], output_path, format='markdown')
+        
+        # Verify file was created
+        assert output_path.exists()
+        
+        # Read and verify content
+        content = output_path.read_text(encoding='utf-8')
+        
+        # Verify structure
+        assert "# Chord Recognition Evaluation Report" in content
+        assert "**Total Songs Processed:** 1" in content
+        
+        # Verify aggregate statistics (with single song, std dev should be 0)
+        assert "## Aggregate Statistics" in content
+        assert "0.00%" in content  # std dev for single song
+        
+        # Verify song details
+        assert "### 1. test_song" in content
+        assert "100.00%" in content  # perfect scores
+        assert "0.0000" in content   # zero DTW distance
+        assert "2.50s" in content    # processing time
+        
+        # Verify chord sequences
+        assert "D | A | Bm7 | G" in content
+    
+    def test_generate_markdown_report_multiple_songs(self, tmp_path):
+        """Test markdown report generation with multiple songs.
+        
+        Validates: Requirements 7.2, 7.3, 7.4
+        """
+        from src.evaluation.models import BenchmarkResult, EvaluationMetrics
+        
+        results = [
+            BenchmarkResult(
+                song_name="song1",
+                metrics=EvaluationMetrics(
+                    sequence_accuracy=0.8,
+                    root_accuracy=0.9,
+                    quality_accuracy=0.85,
+                    dtw_distance=0.15,
+                    exact_match_rate=0.75
+                ),
+                predicted_chords=["D", "A", "Bm7"],
+                ground_truth_chords=["D", "A", "Bm7"],
+                processing_time=1.0
+            ),
+            BenchmarkResult(
+                song_name="song2",
+                metrics=EvaluationMetrics(
+                    sequence_accuracy=0.9,
+                    root_accuracy=0.95,
+                    quality_accuracy=0.92,
+                    dtw_distance=0.08,
+                    exact_match_rate=0.88
+                ),
+                predicted_chords=["C", "G", "Am", "F"],
+                ground_truth_chords=["C", "G", "Am", "F"],
+                processing_time=1.5
+            ),
+            BenchmarkResult(
+                song_name="song3",
+                metrics=EvaluationMetrics(
+                    sequence_accuracy=0.7,
+                    root_accuracy=0.85,
+                    quality_accuracy=0.80,
+                    dtw_distance=0.20,
+                    exact_match_rate=0.70
+                ),
+                predicted_chords=["E", "B", "C#m"],
+                ground_truth_chords=["E", "B", "C#m"],
+                processing_time=2.0
+            )
+        ]
+        
+        output_path = tmp_path / "multiple_songs_report.md"
+        tool = BenchmarkTool()
+        
+        # Generate report
+        tool.generate_report(results, output_path, format='markdown')
+        
+        # Verify file was created
+        assert output_path.exists()
+        
+        # Read and verify content
+        content = output_path.read_text(encoding='utf-8')
+        
+        # Verify summary
+        assert "**Total Songs Processed:** 3" in content
+        
+        # Verify aggregate statistics table exists
+        assert "## Aggregate Statistics" in content
+        assert "| Metric | Mean | Std Dev | Min | Max |" in content
+        
+        # Verify all three songs are listed
+        assert "### 1. song1" in content
+        assert "### 2. song2" in content
+        assert "### 3. song3" in content
+        
+        # Verify each song has its chord sequences
+        assert "D | A | Bm7" in content
+        assert "C | G | Am | F" in content
+        assert "E | B | C#m" in content
+    
+    def test_generate_markdown_report_preserves_chord_sequences(self, tmp_path):
+        """Test that chord sequences are preserved in markdown report.
+        
+        Validates: Requirement 7.4
+        """
+        from src.evaluation.models import BenchmarkResult, EvaluationMetrics
+        
+        # Create result with specific chord sequences
+        predicted = ["D", "AonC#", "Bm7", "G", "D", "A"]
+        ground_truth = ["D", "A", "Bm7", "G", "D", "A"]
+        
+        result = BenchmarkResult(
+            song_name="chord_test",
+            metrics=EvaluationMetrics(
+                sequence_accuracy=0.8,
+                root_accuracy=0.9,
+                quality_accuracy=0.85,
+                dtw_distance=0.15,
+                exact_match_rate=0.83
+            ),
+            predicted_chords=predicted,
+            ground_truth_chords=ground_truth,
+            processing_time=1.5
+        )
+        
+        output_path = tmp_path / "chords_report.md"
+        tool = BenchmarkTool()
+        
+        # Generate report
+        tool.generate_report([result], output_path, format='markdown')
+        
+        # Read content
+        content = output_path.read_text(encoding='utf-8')
+        
+        # Verify chord sequences are preserved exactly
+        predicted_str = " | ".join(predicted)
+        ground_truth_str = " | ".join(ground_truth)
+        
+        assert predicted_str in content
+        assert ground_truth_str in content
+        assert "AonC#" in content  # Verify slash chord is preserved
+    
+    def test_generate_markdown_report_io_error(self, tmp_path):
+        """Test handling of IO errors when writing markdown report.
+        
+        Validates: Requirement 7.5
+        """
+        from src.evaluation.models import BenchmarkResult, EvaluationMetrics
+        
+        result = BenchmarkResult(
+            song_name="test",
+            metrics=EvaluationMetrics(
+                sequence_accuracy=0.8,
+                root_accuracy=0.9,
+                quality_accuracy=0.85,
+                dtw_distance=0.15,
+                exact_match_rate=0.75
+            ),
+            predicted_chords=["D"],
+            ground_truth_chords=["D"],
+            processing_time=1.0
+        )
+        
+        # Try to write to a directory (should fail)
+        output_path = tmp_path / "subdir"
+        output_path.mkdir()
+        
+        tool = BenchmarkTool()
+        
+        # Should raise IOError when trying to write to a directory
+        with pytest.raises(IOError):
+            tool.generate_report([result], output_path, format='markdown')
+    
+    def test_generate_markdown_report_formatting(self, tmp_path):
+        """Test that markdown report has proper formatting.
+        
+        Validates: Requirements 7.2, 7.3
+        """
+        from src.evaluation.models import BenchmarkResult, EvaluationMetrics
+        
+        result = BenchmarkResult(
+            song_name="format_test",
+            metrics=EvaluationMetrics(
+                sequence_accuracy=0.8765,
+                root_accuracy=0.9234,
+                quality_accuracy=0.8543,
+                dtw_distance=0.1234,
+                exact_match_rate=0.7890
+            ),
+            predicted_chords=["D", "A"],
+            ground_truth_chords=["D", "A"],
+            processing_time=1.234
+        )
+        
+        output_path = tmp_path / "format_report.md"
+        tool = BenchmarkTool()
+        
+        # Generate report
+        tool.generate_report([result], output_path, format='markdown')
+        
+        # Read content
+        content = output_path.read_text(encoding='utf-8')
+        
+        # Verify percentage formatting (2 decimal places)
+        assert "87.65%" in content  # sequence_accuracy
+        assert "92.34%" in content  # root_accuracy
+        assert "85.43%" in content  # quality_accuracy
+        assert "78.90%" in content  # exact_match_rate
+        
+        # Verify DTW distance formatting (4 decimal places)
+        assert "0.1234" in content
+        
+        # Verify processing time formatting (2 decimal places)
+        assert "1.23s" in content
+        
+        # Verify table structure
+        assert "|--------|-------|" in content  # Table separator
+        assert "| Metric | Value |" in content  # Table header

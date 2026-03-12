@@ -82,7 +82,7 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Property 7: Quality Identification Correctness** - quality matches chord suffix
     - **Validates: Requirements 4.1, 4.2, 4.3, 4.4**
 
-- [ ] 4. Checkpoint - Ensure parser and utilities tests pass
+- [x] 4. Checkpoint - Ensure parser and utilities tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 5. Implement Evaluator core metrics
@@ -175,7 +175,7 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - Test complete mismatches
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.8_
 
-- [ ] 9. Checkpoint - Ensure evaluator tests pass
+- [x] 9. Checkpoint - Ensure evaluator tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 10. Implement Benchmark Tool
@@ -216,13 +216,13 @@ This plan implements a comprehensive evaluation system for chord recognition acc
     - **Validates: Requirements 6.4**
 
 - [ ] 11. Implement report generation
-  - [ ] 11.1 Create JSON report generator
+  - [x] 11.1 Create JSON report generator
     - Include aggregate statistics
     - Include per-song detailed results
     - Save to specified output path
     - _Requirements: 7.1, 7.3, 7.4, 7.5_
   
-  - [ ] 11.2 Create Markdown report generator
+  - [x] 11.2 Create Markdown report generator
     - Format aggregate statistics in table
     - Format per-song results in readable format
     - Save to specified output path

@@ -11,7 +11,7 @@ Validates: Requirements 6.1, 6.2, 12.4, 15.1
 
 import logging
 from pathlib import Path
-from typing import List, Tuple, Dict, Any
+from typing import List, Tuple, Dict, Any, Optional
 
 from .models import BenchmarkResult
 
@@ -35,12 +35,43 @@ class BenchmarkTool:
         """Initialize the BenchmarkTool.
 
         Creates instances of the parser and evaluator for processing songs.
+        Initializes preprocessing_pipeline to None (no preprocessing by default).
+
+        Requirements:
+            - 4.1: Provide method to configure preprocessing pipeline
+            - 4.3: No preprocessing by default
         """
         from .parser import GroundTruthParser
         from .evaluator import Evaluator
 
         self.parser = GroundTruthParser()
         self.evaluator = Evaluator()
+        self.preprocessing_pipeline = None  # No preprocessing by default
+
+    def set_preprocessing_pipeline(self, pipeline):
+        """Configure the preprocessing pipeline for this benchmark tool.
+
+        Sets the preprocessing pipeline to be applied automatically during
+        benchmark execution. Pass None to disable preprocessing.
+
+        Args:
+            pipeline: PreprocessingPipeline instance or None to disable preprocessing
+
+        Requirements:
+            - 4.1: Provide method to configure preprocessing pipeline
+
+        Example:
+            >>> from src.evaluation.preprocessing import PreprocessingPipeline, PreprocessingConfig
+            >>> tool = BenchmarkTool()
+            >>> config = PreprocessingConfig(enable_normalization=True, enable_aggregation=True)
+            >>> pipeline = PreprocessingPipeline(config)
+            >>> tool.set_preprocessing_pipeline(pipeline)
+        """
+        self.preprocessing_pipeline = pipeline
+        if pipeline is not None:
+            logger.info("Preprocessing pipeline configured for benchmark tool")
+        else:
+            logger.info("Preprocessing pipeline disabled for benchmark tool")
     
     def discover_file_pairs(
         self,
@@ -247,7 +278,8 @@ class BenchmarkTool:
                 analysis_result = audio_engine.analyze_audio(use_cache=True)
 
                 # Extract predicted chords from chord progression
-                predicted_chords = [segment.chord for segment in analysis_result.chord_progression]
+                # ChordSegment has root, quality, bass_note attributes, use __str__ to get chord string
+                predicted_chords = [str(segment) for segment in analysis_result.chord_progression]
 
                 if not predicted_chords:
                     raise ValueError(f"No chords recognized in audio file: {audio_path.name}")
@@ -264,8 +296,47 @@ class BenchmarkTool:
                 logger.error(f"Unexpected error processing audio file: {audio_path.name}. Error: {e}")
                 raise RuntimeError(f"Failed to process audio file: {e}")
 
-            # Step 3: Calculate metrics using Evaluator
-            logger.info(f"Step 3/3: Calculating evaluation metrics")
+            # Step 3: Apply preprocessing if configured
+            if self.preprocessing_pipeline is not None:
+                logger.info(f"Step 3/4: Applying preprocessing pipeline")
+                
+                try:
+                    # Extract timestamps if available
+                    predicted_timestamps = None
+                    ground_truth_timestamps = None
+                    
+                    # Get predicted timestamps from chord progression
+                    if hasattr(analysis_result, 'chord_progression') and analysis_result.chord_progression:
+                        predicted_timestamps = [segment.start_time for segment in analysis_result.chord_progression]
+                    
+                    # Get ground truth timestamps from annotations
+                    if ground_truth_annotations:
+                        ground_truth_timestamps = [ann.timestamp for ann in ground_truth_annotations]
+                    
+                    # Apply preprocessing
+                    processed_predicted, processed_ground_truth = self.preprocessing_pipeline.preprocess(
+                        predicted_chords,
+                        ground_truth_chords,
+                        predicted_timestamps,
+                        ground_truth_timestamps
+                    )
+                    
+                    logger.info(
+                        f"Preprocessing applied - "
+                        f"Predicted: {len(predicted_chords)} → {len(processed_predicted)} chords, "
+                        f"Ground truth: {len(ground_truth_chords)} → {len(processed_ground_truth)} chords"
+                    )
+                    
+                    # Use preprocessed chords for evaluation
+                    predicted_chords = processed_predicted
+                    ground_truth_chords = processed_ground_truth
+                    
+                except Exception as e:
+                    logger.error(f"Preprocessing failed for song: {song_name}. Error: {e}")
+                    raise RuntimeError(f"Failed to apply preprocessing: {e}")
+            
+            # Step 4: Calculate metrics using Evaluator
+            logger.info(f"Step {'4' if self.preprocessing_pipeline is not None else '3'}/{'4' if self.preprocessing_pipeline is not None else '3'}: Calculating evaluation metrics")
 
             try:
                 # Evaluator handles alignment internally if sequences have different lengths
@@ -285,7 +356,7 @@ class BenchmarkTool:
             # Calculate processing time
             processing_time = time.time() - start_time
 
-            # Step 4: Create BenchmarkResult
+            # Step 5: Create BenchmarkResult
             result = BenchmarkResult(
                 song_name=song_name,
                 metrics=metrics,
@@ -322,7 +393,8 @@ class BenchmarkTool:
     def run_benchmark(
         self,
         audio_dir: Path,
-        ground_truth_dir: Path
+        ground_truth_dir: Path,
+        enable_preprocessing: Optional[bool] = None
     ) -> List[BenchmarkResult]:
         """Run benchmark on multiple songs.
         
@@ -336,15 +408,41 @@ class BenchmarkTool:
         Args:
             audio_dir: Directory containing audio files
             ground_truth_dir: Directory containing ground truth files
+            enable_preprocessing: Optional override for preprocessing pipeline.
+                                 If True, temporarily enables preprocessing (requires pipeline to be set).
+                                 If False, temporarily disables preprocessing.
+                                 If None (default), uses current pipeline configuration.
             
         Returns:
             List of BenchmarkResult objects for all successfully processed songs
             
+        Requirements:
+            - 4.4: Allow temporary override of pipeline configuration
+            - 6.5: Process multiple songs
+            - 12.1, 12.2, 12.3: Batch processing with error handling
+        
         Validates: Requirements 6.5, 12.1, 12.2, 12.3
         """
         logger.info(f"Starting benchmark run")
         logger.info(f"Audio directory: {audio_dir}")
         logger.info(f"Ground truth directory: {ground_truth_dir}")
+        
+        # Handle preprocessing override
+        original_pipeline = self.preprocessing_pipeline
+        
+        if enable_preprocessing is not None:
+            if enable_preprocessing:
+                if self.preprocessing_pipeline is None:
+                    logger.warning(
+                        "enable_preprocessing=True but no pipeline configured. "
+                        "Preprocessing will be skipped."
+                    )
+                else:
+                    logger.info("Preprocessing temporarily enabled for this benchmark run")
+            else:
+                # Temporarily disable preprocessing
+                logger.info("Preprocessing temporarily disabled for this benchmark run")
+                self.preprocessing_pipeline = None
         
         # Step 1: Discover all matching file pairs
         try:
@@ -356,6 +454,10 @@ class BenchmarkTool:
         
         if not file_pairs:
             logger.warning("No file pairs found to process")
+            # Restore original pipeline configuration before returning
+            if enable_preprocessing is not None:
+                self.preprocessing_pipeline = original_pipeline
+                logger.debug("Restored original preprocessing pipeline configuration")
             return []
         
         # Step 2: Process each file pair
@@ -416,29 +518,238 @@ class BenchmarkTool:
         logger.info(f"Successfully processed: {len(results)}/{len(file_pairs)} songs")
         logger.info(f"Failed: {failed_count}/{len(file_pairs)} songs")
         
+        # Restore original pipeline configuration
+        if enable_preprocessing is not None:
+            self.preprocessing_pipeline = original_pipeline
+            logger.debug("Restored original preprocessing pipeline configuration")
+        
         return results
     
     def generate_report(
         self,
         results: List[BenchmarkResult],
-        output_path: Path
+        output_path: Path,
+        format: str = 'json'
     ) -> None:
-        """Generate evaluation report.
+        """Generate evaluation report in JSON or Markdown format.
         
-        This method will be implemented in a later task to:
-        1. Format results as JSON or Markdown
-        2. Include aggregate statistics
-        3. Include per-song details
-        4. Save to specified path
+        This method:
+        1. Calculates aggregate statistics using aggregate_metrics
+        2. Formats results as JSON or Markdown
+        3. Includes aggregate statistics
+        4. Includes per-song detailed results
+        5. Saves to specified output path
+        6. Handles empty results list
         
         Args:
             results: List of benchmark results
             output_path: Path to save the report
+            format: Report format ('json' or 'markdown')
             
-        Validates: Requirements 7.1, 7.2, 7.5
+        Raises:
+            ValueError: If format is not 'json' or 'markdown'
+            IOError: If unable to write to output path
+            
+        Validates: Requirements 7.1, 7.2, 7.3, 7.4, 7.5
         """
-        # This will be implemented in later tasks
-        raise NotImplementedError("generate_report will be implemented in later tasks")
+        if format not in ['json', 'markdown']:
+            raise ValueError(f"Invalid format: {format}. Must be 'json' or 'markdown'")
+        
+        logger.info(f"Generating {format.upper()} report to: {output_path}")
+        
+        if format == 'json':
+            self._generate_json_report(results, output_path)
+        else:
+            self._generate_markdown_report(results, output_path)
+        
+        logger.info(f"Report successfully saved to: {output_path}")
+    
+    def _generate_json_report(
+        self,
+        results: List[BenchmarkResult],
+        output_path: Path
+    ) -> None:
+        """Generate JSON format report.
+        
+        This method:
+        1. Calculates aggregate statistics
+        2. Formats per-song detailed results
+        3. Creates JSON structure with both aggregate and detailed data
+        4. Saves to specified path
+        5. Handles empty results list
+        
+        Args:
+            results: List of benchmark results
+            output_path: Path to save the JSON report
+            
+        Raises:
+            IOError: If unable to write to output path
+            
+        Validates: Requirements 7.1, 7.3, 7.4, 7.5
+        """
+        import json
+        
+        # Calculate aggregate statistics
+        aggregate_stats = self.aggregate_metrics(results)
+        
+        # Format per-song detailed results
+        detailed_results = []
+        
+        for result in results:
+            song_data = {
+                'song_name': result.song_name,
+                'metrics': {
+                    'sequence_accuracy': result.metrics.sequence_accuracy,
+                    'root_accuracy': result.metrics.root_accuracy,
+                    'quality_accuracy': result.metrics.quality_accuracy,
+                    'dtw_distance': result.metrics.dtw_distance,
+                    'exact_match_rate': result.metrics.exact_match_rate
+                },
+                'predicted_chords': result.predicted_chords,
+                'ground_truth_chords': result.ground_truth_chords,
+                'processing_time': result.processing_time
+            }
+            detailed_results.append(song_data)
+        
+        # Create complete report structure
+        report = {
+            'summary': {
+                'total_songs': len(results),
+                'aggregate_statistics': aggregate_stats
+            },
+            'detailed_results': detailed_results
+        }
+        
+        # Save to file
+        try:
+            with open(output_path, 'w', encoding='utf-8') as f:
+                json.dump(report, f, indent=2, ensure_ascii=False)
+            logger.info(f"JSON report written with {len(results)} songs")
+        except IOError as e:
+            logger.error(f"Failed to write JSON report to {output_path}: {e}")
+            raise
+    
+    def _generate_markdown_report(
+        self,
+        results: List[BenchmarkResult],
+        output_path: Path
+    ) -> None:
+        """Generate Markdown format report.
+        
+        This method:
+        1. Calculates aggregate statistics
+        2. Formats aggregate statistics as a markdown table
+        3. Formats per-song results in readable markdown format
+        4. Saves to specified path
+        5. Handles empty results list
+        
+        Args:
+            results: List of benchmark results
+            output_path: Path to save the Markdown report
+            
+        Raises:
+            IOError: If unable to write to output path
+            
+        Validates: Requirements 7.2, 7.3, 7.4, 7.5
+        """
+        # Calculate aggregate statistics
+        aggregate_stats = self.aggregate_metrics(results)
+        
+        # Build markdown content
+        lines = []
+        
+        # Title
+        lines.append("# Chord Recognition Evaluation Report")
+        lines.append("")
+        
+        # Summary section
+        lines.append("## Summary")
+        lines.append("")
+        lines.append(f"**Total Songs Processed:** {len(results)}")
+        lines.append("")
+        
+        # Aggregate statistics table
+        if aggregate_stats:
+            lines.append("## Aggregate Statistics")
+            lines.append("")
+            lines.append("| Metric | Mean | Std Dev | Min | Max |")
+            lines.append("|--------|------|---------|-----|-----|")
+            
+            # Define metric display names
+            metric_names = [
+                ('sequence_accuracy', 'Sequence Accuracy'),
+                ('root_accuracy', 'Root Accuracy'),
+                ('quality_accuracy', 'Quality Accuracy'),
+                ('dtw_distance', 'DTW Distance'),
+                ('exact_match_rate', 'Exact Match Rate')
+            ]
+            
+            for metric_key, metric_display in metric_names:
+                mean_val = aggregate_stats.get(f"{metric_key}_mean", 0.0)
+                std_val = aggregate_stats.get(f"{metric_key}_std", 0.0)
+                min_val = aggregate_stats.get(f"{metric_key}_min", 0.0)
+                max_val = aggregate_stats.get(f"{metric_key}_max", 0.0)
+                
+                # Format values (percentages for accuracy metrics, float for DTW)
+                if metric_key == 'dtw_distance':
+                    lines.append(
+                        f"| {metric_display} | {mean_val:.4f} | {std_val:.4f} | "
+                        f"{min_val:.4f} | {max_val:.4f} |"
+                    )
+                else:
+                    lines.append(
+                        f"| {metric_display} | {mean_val:.2%} | {std_val:.2%} | "
+                        f"{min_val:.2%} | {max_val:.2%} |"
+                    )
+            
+            lines.append("")
+        
+        # Per-song detailed results
+        if results:
+            lines.append("## Detailed Results by Song")
+            lines.append("")
+            
+            for i, result in enumerate(results, 1):
+                lines.append(f"### {i}. {result.song_name}")
+                lines.append("")
+                
+                # Metrics table for this song
+                lines.append("| Metric | Value |")
+                lines.append("|--------|-------|")
+                lines.append(f"| Sequence Accuracy | {result.metrics.sequence_accuracy:.2%} |")
+                lines.append(f"| Root Accuracy | {result.metrics.root_accuracy:.2%} |")
+                lines.append(f"| Quality Accuracy | {result.metrics.quality_accuracy:.2%} |")
+                lines.append(f"| DTW Distance | {result.metrics.dtw_distance:.4f} |")
+                lines.append(f"| Exact Match Rate | {result.metrics.exact_match_rate:.2%} |")
+                lines.append(f"| Processing Time | {result.processing_time:.2f}s |")
+                lines.append("")
+                
+                # Chord sequences
+                lines.append("**Predicted Chords:**")
+                lines.append("")
+                lines.append(f"`{' | '.join(result.predicted_chords)}`")
+                lines.append("")
+                
+                lines.append("**Ground Truth Chords:**")
+                lines.append("")
+                lines.append(f"`{' | '.join(result.ground_truth_chords)}`")
+                lines.append("")
+        else:
+            lines.append("## Detailed Results")
+            lines.append("")
+            lines.append("*No results to display.*")
+            lines.append("")
+        
+        # Join all lines and save to file
+        markdown_content = "\n".join(lines)
+        
+        try:
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(markdown_content)
+            logger.info(f"Markdown report written with {len(results)} songs")
+        except IOError as e:
+            logger.error(f"Failed to write Markdown report to {output_path}: {e}")
+            raise
     
     def aggregate_metrics(
         self,
